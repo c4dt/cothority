@@ -78,6 +78,10 @@ var cmds = cli.Commands{
 				Usage: "which server number from the roster to contact (default: 0)",
 				Value: 0,
 			},
+			cli.BoolFlag{
+				Name:  "update",
+				Usage: "update the ByzCoin config file with the fetched roster",
+			},
 		},
 		Action: show,
 	},
@@ -399,29 +403,47 @@ func show(c *cli.Context) error {
 
 	// Allow the user to set the server number; useful when testing leader rotation.
 	cl.ServerNumber = c.Int("server")
+	if cl.ServerNumber > len(cl.Roster.List)-1 {
+		return errors.New("server index out of range")
+	}
 
 	fmt.Fprintln(c.App.Writer, "ByzCoinID:", fmt.Sprintf("%x", cfg.ByzCoinID))
-	fmt.Fprintln(c.App.Writer, "Genesis Darc:")
-
-	gd, err := cl.GetGenDarc()
-	if err != nil {
-		return err
-	}
-	fmt.Fprint(c.App.Writer, gd, "\n\n")
+	fmt.Fprintln(c.App.Writer, "Genesis DARC:", cfg.GenesisDarc.GetIdentityString())
+	fmt.Fprintln(c.App.Writer, "local roster:", fmtRoster(&cfg.Roster))
+	fmt.Fprintln(c.App.Writer, "contacting server:", cl.Roster.List[cl.ServerNumber])
 
 	p, err := cl.GetProof(byzcoin.ConfigInstanceID.Slice())
 	if err != nil {
 		return err
 	}
-	sb := p.Proof.Latest
-	var roster []string
-	for _, s := range sb.Roster.List {
-		roster = append(roster, string(s.Address))
+
+	err = p.Proof.Verify(cfg.ByzCoinID)
+	if err != nil {
+		return err
 	}
+
+	sb := p.Proof.Latest
 	fmt.Fprintf(c.App.Writer, "Last block:\n\tIndex: %d\n\tBlockMaxHeight: %d\n\tBackLinks: %d\n\tRoster: %s\n\n",
-		sb.Index, sb.Height, len(sb.BackLinkIDs), strings.Join(roster, ", "))
+		sb.Index, sb.Height, len(sb.BackLinkIDs), fmtRoster(sb.Roster))
+
+	if c.Bool("update") {
+		cfg.Roster = *sb.Roster
+		var fn string
+		fn, err = lib.SaveConfig(cfg)
+		if err == nil {
+			fmt.Fprintln(c.App.Writer, "updated config file:", fn)
+		}
+	}
 
 	return err
+}
+
+func fmtRoster(r *onet.Roster) string {
+	var roster []string
+	for _, s := range r.List {
+		roster = append(roster, string(s.Address))
+	}
+	return strings.Join(roster, ", ")
 }
 
 func getBcKey(c *cli.Context) (cfg lib.Config, cl *byzcoin.Client, signer *darc.Signer,
