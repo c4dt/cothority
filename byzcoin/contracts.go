@@ -4,6 +4,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"go.dedis.ch/cothority/v3"
@@ -36,21 +39,152 @@ type Contract interface {
 	Invoke(ReadOnlyStateTrie, Instruction, []Coin) ([]StateChange, []Coin, error)
 	// Delete removes the current instance
 	Delete(ReadOnlyStateTrie, Instruction, []Coin) ([]StateChange, []Coin, error)
+	// Print ...
+	FormatMethod(Instruction) string
+}
+
+// FormatMethod prints the method of a given instruction (ie. "Spawn", "Invoke",
+// or "Delete"). This basic function simply calls "strconv.Quote" on the args of
+// the method. It should be overrided by contracts that have more complex
+// arguments. See the config contract for an example.
+func (b BasicContract) FormatMethod(instr Instruction) string {
+	out := new(strings.Builder)
+	var instArgs Arguments
+
+	switch instr.GetType() {
+	case SpawnType:
+		out.WriteString("- Spawn:\n")
+		fmt.Fprintf(out, "-- ContractID: %s\n", instr.Spawn.ContractID)
+		instArgs = instr.Spawn.Args
+	case InvokeType:
+		out.WriteString("- Invoke:\n")
+		fmt.Fprintf(out, "-- ContractID: %s\n", instr.Invoke.ContractID)
+		fmt.Fprintf(out, "-- Command: %s\n", instr.Invoke.Command)
+		instArgs = instr.Invoke.Args
+	case DeleteType:
+		out.WriteString("- Delete:\n")
+		fmt.Fprintf(out, "-- ContractID: %s\n", instr.Delete.ContractID)
+		instArgs = []Argument{}
+	}
+
+	out.WriteString("-- Args:\n")
+	for _, name := range instArgs.Names() {
+		fmt.Fprintf(out, "--- %s:\n", name)
+		fmt.Fprintf(out, "---- %s\n", strconv.Quote(string(instArgs.Search(name))))
+	}
+	return out.String()
+}
+
+// ReadOnlyContractRegistry is the read-only interface for the contract registry.
+type ReadOnlyContractRegistry interface {
+	Search(contractID string) (ContractFn, bool)
+}
+
+// ContractWithRegistry is an interface to detect contracts that need a reference
+// to the registry.
+type ContractWithRegistry interface {
+	SetRegistry(ReadOnlyContractRegistry)
 }
 
 // ContractFn is the type signature of the instance factory functions which can be
 // registered with the ByzCoin service.
 type ContractFn func(in []byte) (Contract, error)
 
-// RegisterContract stores the contract in a map and will call it whenever a
-// contract needs to be done. GetService makes it possible to give either an
-// `onet.Context` or `onet.Server` to `RegisterContract`.
+// contractRegistry maps a contract ID with its constructor function. As soon
+// as the first cloning happens, the registry will be locked and no new contract
+// can be added for the global call.
+type contractRegistry struct {
+	registry map[string]ContractFn
+	locked   bool
+	sync.Mutex
+}
+
+// register tries to store the contract inside the registry. It will fail if the
+// registry is locked and ignoreLock is set to false. It will also fail if the
+// contract already exists.
+// Because of backwards compatibility, the ignoreLock parameter can be set to
+// true to register a contract after module initialization.
+func (cr *contractRegistry) register(contractID string, f ContractFn, ignoreLock bool) error {
+	cr.Lock()
+	if cr.locked && !ignoreLock {
+		cr.Unlock()
+		return errors.New("contract registry is locked")
+	}
+
+	_, exists := cr.registry[contractID]
+	if exists {
+		cr.Unlock()
+		return errors.New("contract already registered")
+	}
+
+	cr.registry[contractID] = f
+	cr.Unlock()
+	return nil
+}
+
+// Search looks up the contract ID and returns the constructor function
+// if it exists and nil otherwise.
+func (cr *contractRegistry) Search(contractID string) (ContractFn, bool) {
+	cr.Lock()
+	fn, exists := cr.registry[contractID]
+	cr.Unlock()
+	return fn, exists
+}
+
+// Clone returns a copy of the registry and locks the source so that
+// static registration is not allowed anymore. This is to prevent
+// registration of a contract at runtime and limit it only to the
+// initialization phase.
+func (cr *contractRegistry) clone() *contractRegistry {
+	cr.Lock()
+	cr.locked = true
+
+	clone := newContractRegistry()
+	// It is locked for outsiders but the package can manually update
+	// the registry (e.g. tests)
+	clone.locked = true
+	for key, value := range cr.registry {
+		clone.registry[key] = value
+	}
+	cr.Unlock()
+
+	return clone
+}
+
+func newContractRegistry() *contractRegistry {
+	return &contractRegistry{
+		registry: make(map[string]ContractFn),
+		locked:   false,
+	}
+}
+
+var globalContractRegistry = newContractRegistry()
+
+// RegisterGlobalContract stores the contract in the global registry. This should
+// be called during module initialization as the registry will be locked down
+// after the first cloning.
+func RegisterGlobalContract(contractID string, f ContractFn) error {
+	return globalContractRegistry.register(contractID, f, false)
+}
+
+// RegisterContract stores the contract in the service registry which
+// makes it only available to byzcoin.
+//
+// Deprecated: Use RegisterGlobalContract during the module initialization
+// for a global access to the contract.
 func RegisterContract(s skipchain.GetService, contractID string, f ContractFn) error {
 	scs := s.Service(ServiceName)
 	if scs == nil {
 		return errors.New("Didn't find our service: " + ServiceName)
 	}
-	return scs.(*Service).registerContract(contractID, f)
+
+	return scs.(*Service).contracts.register(contractID, f, true)
+}
+
+// GetContractRegistry clones the global registry and returns a read-only one.
+// Caution: calling this during the initialization will lock the registry.
+func GetContractRegistry() ReadOnlyContractRegistry {
+	return globalContractRegistry.clone()
 }
 
 // BasicContract is a type that contracts may choose to embed in order to provide
@@ -62,10 +196,7 @@ func notImpl(what string) error { return fmt.Errorf("this contract does not impl
 // VerifyInstruction offers the default implementation of verifying an instruction. Types
 // which embed BasicContract may choose to override this implementation.
 func (b BasicContract) VerifyInstruction(rst ReadOnlyStateTrie, inst Instruction, ctxHash []byte) error {
-	if err := inst.Verify(rst, ctxHash); err != nil {
-		return err
-	}
-	return nil
+	return inst.Verify(rst, ctxHash)
 }
 
 // VerifyDeferredInstruction is not implemented in a BasicContract. Types which
@@ -167,6 +298,29 @@ func (c *contractConfig) VerifyDeferredInstruction(rst ReadOnlyStateTrie, inst I
 	}
 
 	return inst.VerifyWithOption(rst, msg, false)
+}
+
+// FormatMethod overrides the implementation from the BasicContract in order to
+// proprely print "invoke:config.update_config"
+func (c *contractConfig) FormatMethod(instr Instruction) string {
+	out := new(strings.Builder)
+	if instr.GetType() == InvokeType && instr.Invoke.Command == "update_config" {
+		out.WriteString("- Invoke:\n")
+		fmt.Fprintf(out, "-- ContractID: %s\n", instr.Invoke.ContractID)
+		fmt.Fprintf(out, "-- Command: %s\n", instr.Invoke.Command)
+
+		contractConfig := ChainConfig{}
+		err := protobuf.Decode(instr.Invoke.Args.Search("config"), &contractConfig)
+		if err != nil {
+			return "[!!!] failed to decode contractConfig: " + err.Error()
+		}
+
+		out.WriteString("-- Args:\n")
+		out.WriteString(eachLine.ReplaceAllString(contractConfig.String(), "--$1"))
+
+		return out.String()
+	}
+	return c.BasicContract.FormatMethod(instr)
 }
 
 // Spawn expects those arguments:

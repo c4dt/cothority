@@ -2,8 +2,7 @@ package ch.epfl.dedis.byzcoin;
 
 import ch.epfl.dedis.byzcoin.contracts.ChainConfigData;
 import ch.epfl.dedis.byzcoin.contracts.ChainConfigInstance;
-import ch.epfl.dedis.byzcoin.transaction.ClientTransaction;
-import ch.epfl.dedis.byzcoin.transaction.ClientTransactionId;
+import ch.epfl.dedis.byzcoin.transaction.*;
 import ch.epfl.dedis.integration.TestServerController;
 import ch.epfl.dedis.integration.TestServerInit;
 import ch.epfl.dedis.lib.SkipBlock;
@@ -87,12 +86,18 @@ public class ByzCoinRPCTest {
     void getProof() throws Exception {
         // Then make a transaction so we can do something with the proof.
         SignerCounters counters = bc.getSignerCounters(Collections.singletonList(admin.getIdentity().toString()));
-        bc.getGenesisDarcInstance().evolveDarcAndWait(bc.getGenesisDarc(), admin, counters.head()+1, 0);
+        bc.getGenesisDarcInstance().evolveDarcAndWait(bc.getGenesisDarc(), admin, counters.head()+1, 10);
 
         // Get one Proof.
         InstanceId inst = bc.getGenesisDarcInstance().getInstance().getId();
         Proof p = bc.getProof(inst);
         assertTrue(p.exists(inst.getId()));
+        assertEquals(2, p.toProto().getLinksList().size());
+
+        bc.update();
+        p = bc.getProofFromLatest(inst);
+        assertTrue(p.exists(inst.getId()));
+        assertEquals(1, p.toProto().getLinksList().size());
     }
 
     /**
@@ -423,7 +428,9 @@ public class ByzCoinRPCTest {
         assertThrows(CothorityCommunicationException.class, () -> bc.setRoster(newRoster2, admins, counters.getCounters(), 10));
 
         // Too many changes
-        final Roster newRoster3 = new Roster(testInstanceController.getIdentities().subList(0, 6));
+        newList.subList(0, 3).addAll(testInstanceController.getIdentities().subList(4, 6));
+        logger.info(newList.toString());
+        final Roster newRoster3 = new Roster(newList);
         assertThrows(CothorityCommunicationException.class, () -> bc.setRoster(newRoster3, admins, counters.getCounters(), 10));
 
         // And finally some real update of the roster
@@ -451,6 +458,8 @@ public class ByzCoinRPCTest {
             bc.setMaxBlockSize(1000 * 1000, admins, counters.getCounters(), 20);
             counters.increment();
 
+            List<SkipBlock> updates = bc.getSkipchain().getUpdateChain();
+            int latest = updates.get(updates.size() - 1).getIndex();
             logger.info("shutting down two nodes and it should still run");
             try {
                 // here we kill only the 4th conode to avoid killing a subleader because we use a
@@ -467,8 +476,8 @@ public class ByzCoinRPCTest {
             assertEquals(7, bc.getRoster().getNodes().size());
 
             // Check that we can update to the latest block using the skipchain API after roster change.
-            List<SkipBlock> updates = bc.getSkipchain().getUpdateChain();
-            assertEquals(9, updates.get(updates.size() - 1).getIndex());
+            updates = bc.getSkipchain().getUpdateChain();
+            assertEquals(1, updates.get(updates.size() - 1).getIndex() - latest);
 
         } finally {
             logger.info("stopping conode for next tests");

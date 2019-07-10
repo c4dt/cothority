@@ -467,19 +467,19 @@ func (r *Request) VerifyWithCB(d *Darc, getDarc GetDarc) error {
 
 // String returns a human-readable string representation of the darc.
 func (d Darc) String() string {
-	var res strings.Builder
+	res := new(strings.Builder)
 	res.WriteString("- Darc:\n")
-	fmt.Fprintf(&res, "-- Description: %-v\n", strconv.Quote(string(d.Description)))
-	fmt.Fprintf(&res, "-- BaseID: darc:%x\n", d.GetBaseID())
-	fmt.Fprintf(&res, "-- PrevID: darc:%x\n", d.PrevID)
-	fmt.Fprintf(&res, "-- Version: %d\n", d.Version)
+	fmt.Fprintf(res, "-- Description: %-v\n", strconv.Quote(string(d.Description)))
+	fmt.Fprintf(res, "-- BaseID: darc:%x\n", d.GetBaseID())
+	fmt.Fprintf(res, "-- PrevID: darc:%x\n", d.PrevID)
+	fmt.Fprintf(res, "-- Version: %d\n", d.Version)
 	res.WriteString("-- Rules:")
 	for _, v := range d.Rules.List {
-		fmt.Fprintf(&res, "\n--- %s - \"%s\"", v.Action, v.Expr)
+		fmt.Fprintf(res, "\n--- %s - \"%s\"", v.Action, v.Expr)
 	}
 	res.WriteString("\n-- Signatures:")
 	for i, sig := range d.Signatures {
-		fmt.Fprintf(&res, "\n--- %d - id: %s, sig: %x", i, sig.Signer.String(), sig.Signature)
+		fmt.Fprintf(res, "\n--- %d - id: %s, sig: %x", i, sig.Signer.String(), sig.Signature)
 	}
 	return res.String()
 }
@@ -853,7 +853,8 @@ func (id Identity) Verify(msg, sig []byte) error {
 	}
 }
 
-// GetPublicBytes gets the public identifier in bytes. The returned value is not a serialisation of the identity.
+// GetPublicBytes gets the public identifier in bytes. The returned value is
+// not a serialisation of the identity.
 func (id Identity) GetPublicBytes() []byte {
 	switch id.Type() {
 	case 0:

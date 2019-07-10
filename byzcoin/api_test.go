@@ -54,7 +54,7 @@ func TestClient_NewLedgerCorrupted(t *testing.T) {
 	sb.Hash = sb.CalculateHash()
 	_, err = newLedgerWithClient(msg, c)
 	require.Error(t, err)
-	require.Equal(t, "genesis darc tx should only have one instruction", err.Error())
+	require.Equal(t, "genesis block should only have one transaction", err.Error())
 
 	data := &DataBody{
 		TxResults: []TxResult{
@@ -118,6 +118,10 @@ func TestClient_GetProof(t *testing.T) {
 
 	c, csr, err := NewLedger(msg, false)
 	require.Nil(t, err)
+
+	gac, err := c.GetAllByzCoinIDs(roster.List[1])
+	require.NoError(t, err)
+	require.Equal(t, 1, len(gac.IDs))
 
 	// Create a new transaction.
 	value := []byte{5, 6, 7, 8}
@@ -269,7 +273,7 @@ type corruptedService struct {
 func newTestService(c *onet.Context) (onet.Service, error) {
 	s := &Service{
 		ServiceProcessor:       onet.NewServiceProcessor(c),
-		contracts:              make(map[string]ContractFn),
+		contracts:              newContractRegistry(),
 		txBuffer:               newTxBuffer(),
 		storage:                &bcStorage{},
 		darcToSc:               make(map[string]skipchain.SkipBlockID),

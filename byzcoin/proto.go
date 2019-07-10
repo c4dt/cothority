@@ -27,6 +27,15 @@ import (
 // option java_package = "ch.epfl.dedis.lib.proto";
 // option java_outer_classname = "ByzCoinProto";
 
+// GetAllByzCoinIDsRequest is a request to get all the Byzcoin chains from a server.
+type GetAllByzCoinIDsRequest struct {
+}
+
+// GetAllByzCoinIDsResponse contains the list of Byzcoin chains known by a server.
+type GetAllByzCoinIDsResponse struct {
+	IDs []skipchain.SkipBlockID
+}
+
 // DataHeader is the data passed to the Skipchain
 type DataHeader struct {
 	// TrieRoot is the root of the merkle tree of the colleciton after
@@ -385,6 +394,19 @@ type CheckStateChangeValidity struct {
 type CheckStateChangeValidityResponse struct {
 	StateChanges []StateChange
 	BlockID      skipchain.SkipBlockID
+}
+
+// ResolveInstanceID is the request for resolving the instance ID based on the
+// Darc ID and the name.
+type ResolveInstanceID struct {
+	SkipChainID skipchain.SkipBlockID
+	DarcID      darc.ID
+	Name        string
+}
+
+// ResolvedInstanceID is the result of the instance ID resolution.
+type ResolvedInstanceID struct {
+	InstanceID InstanceID
 }
 
 // DebugRequest returns the list of all byzcoins if byzcoinid is empty, else it returns

@@ -1,9 +1,9 @@
 package ch.epfl.dedis.byzcoin;
 
+import ch.epfl.dedis.lib.Hex;
 import ch.epfl.dedis.lib.darc.DarcId;
 import ch.epfl.dedis.lib.exception.CothorityCommunicationException;
 import ch.epfl.dedis.lib.exception.CothorityCryptoException;
-import ch.epfl.dedis.lib.exception.CothorityNotFoundException;
 
 /**
  * A contract represents the data that can be interpreted by the
@@ -48,11 +48,10 @@ public class Instance {
      * @param id a valid instance id
      * @return a new Instance
      * @throws CothorityCommunicationException if something goes wrong
-     * @throws CothorityNotFoundException      if the requested instance cannot be found
      * @throws CothorityCryptoException        if something is wrong with the proof
      */
-    public static Instance fromByzcoin(ByzCoinRPC bc, InstanceId id) throws CothorityCommunicationException, CothorityNotFoundException, CothorityCryptoException {
-        Proof p = bc.getProof(id);
+    public static Instance fromByzcoin(ByzCoinRPC bc, InstanceId id) throws CothorityCommunicationException, CothorityCryptoException {
+        Proof p = bc.getProofFromLatest(id);
         if (!p.exists(id.getId())) {
             throw new CothorityCryptoException("instance is not in proof");
         }
