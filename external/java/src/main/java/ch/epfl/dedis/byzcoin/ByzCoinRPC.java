@@ -141,7 +141,6 @@ public class ByzCoinRPC {
      * @throws CothorityCommunicationException if the transaction has not been included within 'wait' blocks.
      */
     public ClientTransactionId sendTransactionAndWait(ClientTransaction t, int wait) throws CothorityCommunicationException {
-        logger.info("Sending transaction {} with hash {}", t.getInstructions().get(0).action(), t.getId());
         ByzCoinProto.AddTxRequest.Builder request =
                 ByzCoinProto.AddTxRequest.newBuilder();
         request.setVersion(currentVersion);
@@ -153,7 +152,9 @@ public class ByzCoinRPC {
         try {
             ByzCoinProto.AddTxResponse reply =
                     ByzCoinProto.AddTxResponse.parseFrom(msg);
-            // TODO do something with the reply?
+            if (reply.hasError() && !reply.getError().isEmpty()) {
+                throw new CothorityCommunicationException(reply.getError());
+            }
             logger.info("Successfully stored request - waiting for inclusion");
         } catch (InvalidProtocolBufferException e) {
             throw new CothorityCommunicationException(e);
@@ -685,6 +686,24 @@ public class ByzCoinRPC {
         d.addIdentity("invoke:" + ChainConfigInstance.ContractId + ".update_config", admin.getIdentity(), Rules.OR);
         d.addIdentity("invoke:" + SecureDarcInstance.ContractId + ".evolve_unrestricted", admin.getIdentity(), Rules.OR);
         return d;
+    }
+
+    /**
+     * Asks the roster for all the existing ByzCoin IDs.
+     *
+     * @param roster list of all cothority servers with public keys
+     * @return a list of SkipblockIds which are have a ByzCoin service running
+     * @throws CothorityCommunicationException if the communication fails or the message is corrupted
+     */
+    public static List<SkipblockId> getAllByzCoinIDs(Roster roster) throws CothorityCommunicationException {
+        ByzCoinProto.GetAllByzCoinIDsRequest.Builder b = ByzCoinProto.GetAllByzCoinIDsRequest.newBuilder();
+        ByteString msg = roster.sendMessage("ByzCoin/GetAllByzCoinIDsRequest", b.build());
+        try {
+            ByzCoinProto.GetAllByzCoinIDsResponse reply = ByzCoinProto.GetAllByzCoinIDsResponse.parseFrom(msg);
+            return reply.getIdsList().stream().map(SkipblockId::new).collect(Collectors.toList());
+        } catch (InvalidProtocolBufferException e) {
+            throw new CothorityCommunicationException(e);
+        }
     }
 
     /**

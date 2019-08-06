@@ -163,6 +163,8 @@ type Service struct {
 	downloadState downloadState
 
 	rotationWindow time.Duration
+
+	txErrorBuf ringBuf
 }
 
 type downloadState struct {
@@ -170,6 +172,7 @@ type downloadState struct {
 	nonce uint64
 	read  chan DBKeyValue
 	stop  chan bool
+	total int
 }
 
 // storageID reflects the data we're storing - we could store more
@@ -316,7 +319,10 @@ func (s *Service) CreateGenesisBlock(req *CreateGenesisBlock) (
 	}, nil
 }
 
-// AddTransaction requests to apply a new transaction to the ledger.
+// AddTransaction requests to apply a new transaction to the ledger. Note
+// that unlike other service APIs, it is *not* enough to only check for the
+// error value to find out if an error has occured. The caller must also check
+// AddTxResponse.Error even if the error return value is nil.
 func (s *Service) AddTransaction(req *AddTxRequest) (*AddTxResponse, error) {
 	if req.Version != CurrentVersion {
 		return nil, errors.New("version mismatch")
@@ -391,8 +397,19 @@ func (s *Service) AddTransaction(req *AddTxRequest) (*AddTxResponse, error) {
 		for found := false; !found; {
 			select {
 			case success := <-ch:
+				errMsg, exists := s.txErrorBuf.get(req.Transaction.Instructions.HashWithSignatures())
 				if !success {
-					return nil, errors.New("transaction is in block, but got refused")
+					if !exists {
+						return nil, errors.New("transaction is in block, but got refused for unknown error")
+					}
+					// We cannot return an error here because onet will ignore the response if an error occurs.
+					// The length of the error message is limited if we return an error, so we have to return the
+					// error message in the response.
+					return &AddTxResponse{Version: CurrentVersion, Error: errMsg}, nil
+				}
+
+				if exists {
+					log.Warn(s.ServerIdentity(), "transaction is accepted but there are errors: ", errMsg)
 				}
 				found = true
 			case id := <-blockCh:
@@ -430,8 +447,6 @@ func (s *Service) GetProof(req *GetProof) (resp *GetProofResponse, err error) {
 		return nil, errors.New("version mismatch")
 	}
 
-	log.Lvlf2("Returning proof for %x from chain '%x'", req.Key, req.ID)
-
 	sb := s.db().GetByID(req.ID)
 	if sb == nil {
 		err = errors.New("cannot find skipblock while getting proof")
@@ -443,11 +458,11 @@ func (s *Service) GetProof(req *GetProof) (resp *GetProofResponse, err error) {
 	}
 	proof, err := NewProof(st, s.db(), req.ID, req.Key)
 	if err != nil {
-		log.Error(s.ServerIdentity(), err)
 		return
 	}
 
 	_, v := proof.InclusionProof.KeyValue()
+	log.Lvlf2("%s: Returning proof for %x from chain %x at index %v", s.ServerIdentity(), req.Key, sb.SkipChainID(), sb.Index)
 	log.Lvlf3("value is %x", v)
 	resp = &GetProofResponse{
 		Version: CurrentVersion,
@@ -541,7 +556,7 @@ func (s *Service) DownloadState(req *DownloadState) (resp *DownloadStateResponse
 	}
 
 	if req.Nonce == 0 {
-		log.Lvl2("Creating new download")
+		log.Lvl2(s.ServerIdentity(), "Creating new download")
 		if !s.downloadState.id.IsNull() {
 			log.Lvlf2("Aborting download of nonce %x", s.downloadState.nonce)
 			close(s.downloadState.stop)
@@ -555,11 +570,13 @@ func (s *Service) DownloadState(req *DownloadState) (resp *DownloadStateResponse
 		s.downloadState.stop = make(chan bool)
 		nonce := binary.LittleEndian.Uint64(random.Bits(64, true, random.New()))
 		s.downloadState.nonce = nonce
+		total := make(chan int)
 		go func(ds downloadState) {
 			idStr := fmt.Sprintf("%x", ds.id)
 			db, bucketName := s.GetAdditionalBucket([]byte(idStr))
 			err := db.View(func(tx *bbolt.Tx) error {
 				bucket := tx.Bucket(bucketName)
+				total <- bucket.Stats().KeyN
 				return bucket.ForEach(func(k []byte, v []byte) error {
 					key := make([]byte, len(k))
 					copy(key, k)
@@ -580,12 +597,14 @@ func (s *Service) DownloadState(req *DownloadState) (resp *DownloadStateResponse
 			}
 			close(ds.read)
 		}(s.downloadState)
+		s.downloadState.total = <-total
 	} else if !s.downloadState.id.Equal(req.ByzCoinID) || req.Nonce != s.downloadState.nonce {
 		return nil, errors.New("download has been aborted in favor of another download")
 	}
 
 	resp = &DownloadStateResponse{
 		Nonce: s.downloadState.nonce,
+		Total: s.downloadState.total,
 	}
 query:
 	for i := 0; i < req.Length; i++ {
@@ -1001,106 +1020,110 @@ func (s *Service) downloadDB(sb *skipchain.SkipBlock) error {
 	log.Lvlf2("%s: downloading DB", s.ServerIdentity())
 	idStr := fmt.Sprintf("%x", sb.SkipChainID())
 
-	// Loop over all nodes that are not the leader and
-	// not subleaders, to avoid overloading those nodes.
-	nodes := len(sb.Roster.List)
-	subLeaders := int(math.Ceil(math.Pow(float64(nodes), 1./3.)))
-	for ri := 1 + subLeaders; ri < nodes; ri++ {
-		// Create a roster with just the node we want to
-		// download from.
-		roster := onet.NewRoster(sb.Roster.List[ri : ri+1])
-
-		err := func() error {
-			// First delete an existing stateTrie. There
-			// cannot be another write-access to the
-			// database because of catchingLock.
-			_, err := s.getStateTrie(sb.SkipChainID())
-			if err == nil {
-				// Suppose we _do_ have a statetrie
-				db, stBucket := s.GetAdditionalBucket(sb.SkipChainID())
-				err := db.Update(func(tx *bbolt.Tx) error {
-					return tx.DeleteBucket(stBucket)
-				})
-				if err != nil {
-					return fmt.Errorf("Cannot delete existing trie while trying to download: %s", err.Error())
-				}
-				s.stateTriesLock.Lock()
-				delete(s.stateTries, idStr)
-				s.stateTriesLock.Unlock()
-			}
-
-			// Then start downloading the stateTrie over the network.
-			cl := NewClient(sb.SkipChainID(), *roster)
-			var db *bbolt.DB
-			var bucketName []byte
-			var nonce uint64
-			for {
-				// Note: we trust the chain therefore even if the reply is corrupted,
-				// it will be detected by difference in the root hash
-				resp, err := cl.DownloadState(sb.SkipChainID(), nonce, catchupFetchDBEntries)
-				if err != nil {
-					return errors.New("cannot download trie: " + err.Error())
-				}
-				if db == nil {
-					db, bucketName = s.GetAdditionalBucket([]byte(idStr))
-					nonce = resp.Nonce
-				}
-				// And store all entries in our local database.
-				err = db.Update(func(tx *bbolt.Tx) error {
-					bucket := tx.Bucket(bucketName)
-					for _, kv := range resp.KeyValues {
-						err := bucket.Put(kv.Key, kv.Value)
-						if err != nil {
-							return err
-						}
-					}
-					return nil
-				})
-				if err != nil {
-					return fmt.Errorf("Couldn't store entries: %s", err.Error())
-				}
-				if len(resp.KeyValues) < catchupFetchDBEntries {
-					break
-				}
-			}
-
-			// Check the new trie is correct
-			st, err := loadStateTrie(db, bucketName)
-			if err != nil {
-				return errors.New("couldn't load state trie: " + err.Error())
-			}
-			if sb.Index != st.GetIndex() {
-				log.Lvl2("Downloading corresponding block")
-				skCl := skipchain.NewClient()
-				// TODO: add a client API to fetch a specific block and its proof
-				search, err := skCl.GetSingleBlockByIndex(roster, sb.SkipChainID(), st.GetIndex())
-				if err != nil {
-					return errors.New("couldn't get correct block for verification: " + err.Error())
-				}
-				sb = search.SkipBlock
-			}
-			var header DataHeader
-			err = protobuf.Decode(sb.Data, &header)
-			if err != nil {
-				return errors.New("couldn't unmarshal header: " + err.Error())
-			}
-			if !bytes.Equal(st.GetRoot(), header.TrieRoot) {
-				return errors.New("got wrong database, merkle roots don't work out")
-			}
-
-			// Finally initialize the stateTrie using the new database.
-			s.stateTriesLock.Lock()
-			s.stateTries[idStr] = st
-			s.stateTriesLock.Unlock()
-			log.Lvlf1("%s: successfully downloaded database for chain %s", s.ServerIdentity(),
-				idStr)
-			return nil
-		}()
+	err := func() error {
+		// First delete an existing stateTrie. There
+		// cannot be another write-access to the
+		// database because of catchingLock.
+		_, err := s.getStateTrie(sb.SkipChainID())
 		if err == nil {
-			return nil
+			// Suppose we _do_ have a statetrie
+			db, stBucket := s.GetAdditionalBucket(sb.SkipChainID())
+			err := db.Update(func(tx *bbolt.Tx) error {
+				return tx.DeleteBucket(stBucket)
+			})
+			if err != nil {
+				return fmt.Errorf("Cannot delete existing trie while trying to download: %s", err.Error())
+			}
+			s.stateTriesLock.Lock()
+			delete(s.stateTries, idStr)
+			s.stateTriesLock.Unlock()
 		}
-		log.Errorf("Couldn't load database from %s - got error %s", roster.List[0], err)
+
+		// Then start downloading the stateTrie over the network.
+		cl := NewClient(sb.SkipChainID(), *sb.Roster)
+		cl.DontContact(s.ServerIdentity())
+		var db *bbolt.DB
+		var bucketName []byte
+		var nonce uint64
+		var cursor int
+		for {
+			// Note: we trust the chain therefore even if the reply is corrupted,
+			// it will be detected by difference in the root hash
+			resp, err := cl.DownloadState(sb.SkipChainID(), nonce, catchupFetchDBEntries)
+			if err != nil {
+				return errors.New("cannot download trie: " + err.Error())
+			}
+			log.Lvlf1("Downloaded key/values %d..%d of %d from %s", cursor, cursor+len(resp.KeyValues), resp.Total,
+				cl.noncesSI[resp.Nonce])
+			cursor += len(resp.KeyValues)
+			if db == nil {
+				db, bucketName = s.GetAdditionalBucket([]byte(idStr))
+				nonce = resp.Nonce
+			}
+			// And store all entries in our local database.
+			err = db.Update(func(tx *bbolt.Tx) error {
+				bucket := tx.Bucket(bucketName)
+				for _, kv := range resp.KeyValues {
+					err := bucket.Put(kv.Key, kv.Value)
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("Couldn't store entries: %s", err.Error())
+			}
+			if len(resp.KeyValues) < catchupFetchDBEntries {
+				break
+			}
+		}
+
+		// Check the new trie is correct
+		st, err := loadStateTrie(db, bucketName)
+		if err != nil {
+			return errors.New("couldn't load state trie: " + err.Error())
+		}
+		skCl := skipchain.NewClient()
+		skCl.DontContact(s.ServerIdentity())
+		if sb.Index != st.GetIndex() {
+			log.Lvl2("Downloading corresponding block", sb.Index, st.GetIndex())
+			// TODO: add a client API to fetch a specific block and its proof
+			search, err := skCl.GetSingleBlockByIndex(sb.Roster, sb.SkipChainID(), st.GetIndex())
+			if err != nil {
+				return errors.New("couldn't get correct block for verification: " + err.Error())
+			}
+			sb = search.SkipBlock
+		}
+		var header DataHeader
+		err = protobuf.Decode(sb.Data, &header)
+		if err != nil {
+			return errors.New("couldn't unmarshal header: " + err.Error())
+		}
+		if !bytes.Equal(st.GetRoot(), header.TrieRoot) {
+			return errors.New("got wrong database, merkle roots don't work out")
+		}
+
+		// Finally initialize the stateTrie using the new database.
+		s.stateTriesLock.Lock()
+		s.stateTries[idStr] = st
+		s.stateTriesLock.Unlock()
+		chain, err := skCl.GetUpdateChain(sb.Roster, sb.SkipChainID())
+		if err != nil {
+			return err
+		}
+		for _, sb := range chain.Update {
+			log.Lvlf2("Storing block %d: %x", sb.Index, sb.CalculateHash())
+			s.db().Store(sb)
+		}
+		log.Lvlf1("%s: successfully downloaded database for chain %s up to block %d/%d", s.ServerIdentity(),
+			idStr, sb.Index, st.GetIndex())
+		return nil
+	}()
+	if err == nil {
+		return nil
 	}
+	log.Error(err)
 	return errors.New("none of the non-leader and non-subleader nodes were able to give us a copy of the state")
 }
 
@@ -1167,6 +1190,10 @@ func (s *Service) catchupAll() error {
 // for a minimal amount of time.
 func (s *Service) catchupFromID(r *onet.Roster, scID skipchain.SkipBlockID, sbID skipchain.SkipBlockID) error {
 	s.catchingLock.Lock()
+	if s.catchingUp {
+		s.catchingLock.Unlock()
+		return errors.New("already catching up")
+	}
 	s.updateTrieLock.Lock()
 	s.catchingUp = true
 	s.updateTrieLock.Unlock()
@@ -1180,8 +1207,11 @@ func (s *Service) catchupFromID(r *onet.Roster, scID skipchain.SkipBlockID, sbID
 
 	// Catch up only friendly skipchains to avoid unnecessary requests
 	if s.db().GetByID(scID) == nil {
-		log.Lvlf3("got asked for unknown skipchain: %x", scID)
-		return nil
+		if !s.skService().ChainIsFriendly(scID) {
+			log.Lvlf3("got asked for unknown, unfriendly skipchain: %x", scID)
+			return nil
+		}
+		log.Lvlf2("got asked for an unknown, friendly skipchain: %x", scID)
 	}
 
 	// The size of the map is limited here by the number of known skipchains
@@ -1195,9 +1225,10 @@ func (s *Service) catchupFromID(r *onet.Roster, scID skipchain.SkipBlockID, sbID
 	s.catchingUpHistory[string(scID)] = time.Now().Add(catchupMinimumInterval)
 	s.catchingUpHistoryLock.Unlock()
 
-	log.Lvlf1("catching up with chain %x", scID)
+	log.Lvlf1("%s: catching up with chain %x", s.ServerIdentity(), scID)
 
 	cl := skipchain.NewClient()
+	cl.DontContact(s.ServerIdentity())
 	sb, err := cl.GetSingleBlock(r, sbID)
 	if err != nil {
 		return err
@@ -1213,14 +1244,46 @@ func (s *Service) catchupFromID(r *onet.Roster, scID skipchain.SkipBlockID, sbID
 // `catchupDownloadAll` behind, or calls downloadDB to start the download of
 // the full DB over the network.
 func (s *Service) catchUp(sb *skipchain.SkipBlock) {
-	log.Lvlf2("%v Catching up %x / %d", s.ServerIdentity(), sb.SkipChainID(), sb.Index)
+	log.Lvlf1("%v Catching up %x / %d", s.ServerIdentity(), sb.SkipChainID(), sb.Index)
 
 	// Load the trie.
 	download := false
 	st, err := s.getStateTrie(sb.SkipChainID())
+	cl := skipchain.NewClient()
+	cl.DontContact(s.ServerIdentity())
 	if err != nil {
-		log.Warn(s.ServerIdentity(), "problem with trie:", err)
-		download = true
+		if sb.Index < catchupDownloadAll {
+			// Asked to catch up on an unknown chain, but don't want to download, instead only replay
+			// the blocks. This is mostly useful for testing, in a real deployement the catchupDownloadAll
+			// will be smaller than any chain that is online for more than a day.
+			log.Warn(s.ServerIdentity(), "problem with trie, will create a new one:", err)
+			genesis, err := cl.GetSingleBlock(sb.Roster, sb.SkipChainID())
+			if err != nil {
+				log.Error("Couldn't get genesis-block:", err)
+				return
+			}
+			var body DataBody
+			err = protobuf.Decode(genesis.Payload, &body)
+			if err != nil {
+				log.Error(s.ServerIdentity(), "could not unmarshal body for genesis block", err)
+				return
+			}
+			nonce, err := loadNonceFromTxs(body.TxResults)
+			if err != nil {
+				log.Error(s.ServerIdentity(), "couldn't load nonce:", err)
+				return
+			}
+			// We don't care about the state trie that is returned in this
+			// function because we load the trie again in getStateTrie
+			// right afterwards.
+			st, err = s.createStateTrie(sb.SkipChainID(), nonce)
+			if err != nil {
+				log.Errorf("could not create trie: %v", err)
+				return
+			}
+		} else {
+			download = true
+		}
 	} else {
 		download = sb.Index-st.GetIndex() > catchupDownloadAll
 	}
@@ -1265,9 +1328,8 @@ func (s *Service) catchUp(sb *skipchain.SkipBlock) {
 	latest := reply.SkipBlock
 
 	// Fetch all missing blocks to fill the hole
-	cl := skipchain.NewClient()
 	for trieIndex < sb.Index {
-		log.Lvlf1("%s: our index: %d - latest known index: %d", s.ServerIdentity(), trieIndex, sb.Index)
+		log.Lvlf2("%s: our index: %d - latest known index: %d", s.ServerIdentity(), trieIndex, sb.Index)
 		updates, err := cl.GetUpdateChainLevel(sb.Roster, latest.Hash, 1, catchupFetchBlocks)
 		if err != nil {
 			log.Error("Couldn't update blocks: " + err.Error())
@@ -1275,6 +1337,9 @@ func (s *Service) catchUp(sb *skipchain.SkipBlock) {
 		}
 
 		// This will call updateTrieCallback with the next block to add
+		for _, sb := range updates {
+			log.Lvlf2("Storing block %d: %x", sb.Index, sb.CalculateHash())
+		}
 		_, err = s.db().StoreBlocks(updates)
 		if err != nil {
 			log.Error("Got an invalid, unlinkable block: " + err.Error())
@@ -1399,12 +1464,6 @@ func (s *Service) updateTrieCallback(sbID skipchain.SkipBlockID) error {
 			"mean that the db is broken. Error: " + err.Error())
 	}
 
-	// Notify all waiting channels for processed ClientTransactions.
-	for _, t := range body.TxResults {
-		s.notifications.informWaitChannel(t.ClientTransaction.Instructions.Hash(), t.Accepted)
-	}
-	s.notifications.informBlock(sb.SkipChainID())
-
 	// If we are adding a genesis block, then look into it for the darc ID
 	// and add it to the darcToSc hash map.
 	if sb.Index == 0 {
@@ -1497,6 +1556,12 @@ func (s *Service) updateTrieCallback(sbID skipchain.SkipBlockID) error {
 		log.Lvlf2("%s not in roster, but viewChangeMonitor started - stopping now for %x", s.ServerIdentity(), sb.SkipChainID())
 		s.viewChangeMan.stop(sb.SkipChainID())
 	}
+
+	// Notify all waiting channels for processed ClientTransactions.
+	for _, t := range body.TxResults {
+		s.notifications.informWaitChannel(t.ClientTransaction.Instructions.Hash(), t.Accepted)
+	}
+	s.notifications.informBlock(sb.SkipChainID())
 
 	// At this point everything should be stored.
 	s.streamingMan.notify(string(sb.SkipChainID()), sb)
@@ -1760,6 +1825,14 @@ func (s *Service) verifySkipBlock(newID []byte, newSB *skipchain.SkipBlock) bool
 			return false
 		}
 		sst = st.MakeStagingStateTrie()
+		if st.GetIndex()+1 != newSB.Index {
+			log.Error(s.ServerIdentity(), "we don't know the previous state of this transaction")
+			err = s.catchupFromID(newSB.Roster, newSB.SkipChainID(), newSB.BackLinkIDs[0])
+			if err != nil {
+				log.Error(err)
+			}
+			return false
+		}
 	}
 	mtr, txOut, scs, _ := s.createStateChanges(sst, newSB.SkipChainID(), body.TxResults, noTimeout)
 
@@ -1937,9 +2010,16 @@ func (s *Service) createStateChanges(sst *stagingStateTrie, scID skipchain.SkipB
 	return
 }
 
-// processOneTx takes one transaction and creates a set of StateChanges. It also returns the temporary StateTrie
-// with the StateChanges applied. Any data from the trie should be read from sst and not the service.
-func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction) (StateChanges, *stagingStateTrie, error) {
+// processOneTx takes one transaction and creates a set of StateChanges. It
+// also returns the temporary StateTrie with the StateChanges applied. Any data
+// from the trie should be read from sst and not the service.
+func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction) (newStateChanges StateChanges, newStateTrie *stagingStateTrie, err error) {
+	defer func() {
+		if err != nil {
+			s.txErrorBuf.add(tx.Instructions.HashWithSignatures(), err.Error())
+		}
+	}()
+
 	// Make a new trie for each instruction. If the instruction is
 	// sucessfully implemented and changes applied, then keep it
 	// otherwise dump it.
@@ -1948,17 +2028,21 @@ func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction) (Sta
 	var statesTemp StateChanges
 	var cin []Coin
 	for _, instr := range tx.Instructions {
-		scs, cout, err := s.executeInstruction(sst, cin, instr, h)
+		var scs StateChanges
+		var cout []Coin
+		scs, cout, err = s.executeInstruction(sst, cin, instr, h)
 		if err != nil {
 			_, _, cid, _, err2 := sst.GetValues(instr.InstanceID.Slice())
 			if err2 != nil {
 				err = fmt.Errorf("%s - while getting value: %s", err, err2)
 			}
-			return nil, nil, fmt.Errorf("%s Contract %s got Instruction %x and returned error: %s", s.ServerIdentity(), cid, instr.Hash(), err)
+			err = fmt.Errorf("%s Contract %s got Instruction %x and returned error: %s", s.ServerIdentity(), cid, instr.Hash(), err)
+			return
 		}
 		var counterScs StateChanges
 		if counterScs, err = incrementSignerCounters(sst, instr.SignerIdentities); err != nil {
-			return nil, nil, fmt.Errorf("%s failed to update signature counters: %s", s.ServerIdentity(), err)
+			err = fmt.Errorf("%s failed to update signature counters: %s", s.ServerIdentity(), err)
+			return
 		}
 
 		// Verify the validity of the state-changes:
@@ -1982,20 +2066,25 @@ func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction) (Sta
 				}
 			}
 			if reason != "" {
-				_, _, contractID, _, err := sst.GetValues(instr.InstanceID.Slice())
+				var contractID string
+				_, _, contractID, _, err = sst.GetValues(instr.InstanceID.Slice())
 				if err != nil {
-					return nil, nil, fmt.Errorf("%s couldn't get contractID from instruction %+v", s.ServerIdentity(), instr)
+					err = fmt.Errorf("%s couldn't get contractID from instruction %+v", s.ServerIdentity(), instr)
+					return
 				}
-				return nil, nil, fmt.Errorf("%s: contract %s %s", s.ServerIdentity(), contractID, reason)
+				err = fmt.Errorf("%s: contract %s %s", s.ServerIdentity(), contractID, reason)
+				return
 			}
 			log.Lvlf2("StateChange %s for id %x - contract: %s", sc.StateAction, sc.InstanceID, sc.ContractID)
 			err = sst.StoreAll(StateChanges{sc})
 			if err != nil {
-				return nil, nil, fmt.Errorf("%s StoreAll failed: %s", s.ServerIdentity(), err)
+				err = fmt.Errorf("%s StoreAll failed: %s", s.ServerIdentity(), err)
+				return
 			}
 		}
 		if err = sst.StoreAll(counterScs); err != nil {
-			return nil, nil, fmt.Errorf("%s StoreAll failed to add counter changes: %s", s.ServerIdentity(), err)
+			err = fmt.Errorf("%s StoreAll failed to add counter changes: %s", s.ServerIdentity(), err)
+			return
 		}
 		statesTemp = append(statesTemp, scs...)
 		statesTemp = append(statesTemp, counterScs...)
@@ -2004,7 +2093,13 @@ func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction) (Sta
 	if len(cin) != 0 {
 		log.Warn(s.ServerIdentity(), "Leftover coins detected, discarding.")
 	}
-	return statesTemp, sst, nil
+
+	newStateChanges = statesTemp
+	newStateTrie = sst
+	if err != nil {
+		panic("programmer error: error should be nil if we get to this point")
+	}
+	return
 }
 
 // GetContractConstructor gets the contract constructor of the contract
@@ -2329,6 +2424,8 @@ func (s *Service) startAllChains() error {
 	s.pollChan = make(map[string]chan bool)
 	s.pollChanMut.Unlock()
 
+	s.skService().RegisterStoreSkipblockCallback(s.updateTrieCallback)
+
 	// All the logic necessary to start the chains is delayed to a goroutine so that
 	// the other services can start immediately and are not blocked by Byzcoin.
 	go func() {
@@ -2595,6 +2692,9 @@ func newService(c *onet.Context) (onet.Service, error) {
 		closed:                 true,
 		catchingUpHistory:      make(map[string]time.Time),
 		rotationWindow:         defaultRotationWindow,
+		// We need a large enough buffer for all errors in 2 blocks
+		// where each block might be 1 MB in size and each tx is 1 KB.
+		txErrorBuf: newRingBuf(2048),
 	}
 
 	err := s.RegisterHandlers(
@@ -2628,7 +2728,6 @@ func newService(c *onet.Context) (onet.Service, error) {
 	if _, err := s.ProtocolRegister(collectTxProtocol, NewCollectTxProtocol(s.getTxs)); err != nil {
 		return nil, err
 	}
-	s.skService().RegisterStoreSkipblockCallback(s.updateTrieCallback)
 
 	// Register the view-change cosi protocols.
 	_, err = s.ProtocolRegister(viewChangeSubFtCosi, func(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {

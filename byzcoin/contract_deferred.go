@@ -59,7 +59,7 @@ func (dd DeferredData) String() string {
 		out.WriteString(eachLine.ReplaceAllString(inst.String(), "--$1"))
 	}
 	fmt.Fprintf(out, "- Expire Block Index: %d\n", dd.ExpireBlockIndex)
-	fmt.Fprint(out, "- Instruction hashes: \n")
+	fmt.Fprint(out, "- Instruction hashes:\n")
 	for i, hash := range dd.InstructionHashes {
 		fmt.Fprintf(out, "-- hash %d:\n", i)
 		fmt.Fprintf(out, "--- %x\n", hash)
@@ -233,21 +233,6 @@ func (c *contractDeferred) Invoke(rst ReadOnlyStateTrie, inst Instruction, coins
 		// method like the "processOneTx" one because it involved quite a lot
 		// of changes and would bring more complexity compared to the benefits.
 
-		// In the following we are creating a new StagingStateTrie from the
-		// readonly state try by copying the data.
-		nonce, err2 := rst.GetNonce()
-		if err2 != nil {
-			return nil, nil, errors.New("couldn't get the nonce: " + err2.Error())
-		}
-		sst, err2 := newMemStagingStateTrie(nonce)
-		if err != nil {
-			return nil, nil, errors.New("Failed to created stagingStateTrie: " + err2.Error())
-		}
-		err = rst.ForEach(sst.Set)
-		if err != nil {
-			return nil, nil, errors.New("couldn't make a copy of readOnlyStateTrie: " + err.Error())
-		}
-
 		instructionIDs := make([][]byte, len(c.DeferredData.ProposedTransaction.Instructions))
 
 		for i, proposedInstr := range c.DeferredData.ProposedTransaction.Instructions {
@@ -281,7 +266,7 @@ func (c *contractDeferred) Invoke(rst ReadOnlyStateTrie, inst Instruction, coins
 				cwr.SetRegistry(c.contracts)
 			}
 
-			err = contract.VerifyDeferredInstruction(sst, proposedInstr, c.DeferredData.InstructionHashes[i])
+			err = contract.VerifyDeferredInstruction(rst, proposedInstr, c.DeferredData.InstructionHashes[i])
 			if err != nil {
 				return nil, nil, fmt.Errorf("verifying the instruction failed: %s", err)
 			}
@@ -289,11 +274,11 @@ func (c *contractDeferred) Invoke(rst ReadOnlyStateTrie, inst Instruction, coins
 			var stateChanges []StateChange
 			switch instructionType {
 			case SpawnType:
-				stateChanges, _, err = contract.Spawn(sst, proposedInstr, coins)
+				stateChanges, _, err = contract.Spawn(rst, proposedInstr, coins)
 			case InvokeType:
-				stateChanges, _, err = contract.Invoke(sst, proposedInstr, coins)
+				stateChanges, _, err = contract.Invoke(rst, proposedInstr, coins)
 			case DeleteType:
-				stateChanges, _, err = contract.Delete(sst, proposedInstr, coins)
+				stateChanges, _, err = contract.Delete(rst, proposedInstr, coins)
 
 			}
 
@@ -301,7 +286,7 @@ func (c *contractDeferred) Invoke(rst ReadOnlyStateTrie, inst Instruction, coins
 				return nil, nil, fmt.Errorf("error while executing an instruction: %s", err)
 			}
 
-			err = sst.StoreAll(stateChanges)
+			rst, err = rst.StoreAllToReplica(stateChanges)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error while storing state changes: %s", err)
 			}
@@ -410,7 +395,21 @@ func (c *contractDeferred) VerifyInstruction(rst ReadOnlyStateTrie, inst Instruc
 		return nil
 	}
 	if err := inst.Verify(rst, ctxHash); err != nil {
-		return err
+		return errors.New("failed to verify instruction: " + err.Error())
+	}
+	return nil
+}
+
+// This function is used in the case we do a deferred transaction on a deferred
+// transaction.
+func (c *contractDeferred) VerifyDeferredInstruction(rst ReadOnlyStateTrie, inst Instruction, ctxHash []byte) error {
+	// We make a special case for the delete instruction. Anyone should be able
+	// to delete a deferred contract that has expired.
+	if inst.GetType() == DeleteType && uint64(rst.GetIndex()) >= c.DeferredData.ExpireBlockIndex {
+		return nil
+	}
+	if err := inst.VerifyWithOption(rst, ctxHash, false); err != nil {
+		return errors.New("failed to verify deferred instruction: " + err.Error())
 	}
 	return nil
 }

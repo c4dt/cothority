@@ -44,7 +44,7 @@ public class NamingTest {
      * Name resolution tests only contains functional tests, more rigorous testing is in the go side.
      */
     @Test
-    void resolveInstanceID() throws Exception {
+    void nameResolution() throws Exception {
         SignerCounters counters = bc.getSignerCounters(Collections.singletonList(admin.getIdentity().toString()));
         counters.increment();
 
@@ -69,8 +69,8 @@ public class NamingTest {
                 10);
 
         // try to get the name back
-        InstanceId iID = bc.resolveInstanceID(bc.getGenesisDarc().getBaseId(), "my genesis darc");
-        assertTrue(iID.equals(new InstanceId(bc.getGenesisDarc().getBaseId().getId())));
+        InstanceId iID = namingInst.resolve(bc.getGenesisDarc().getBaseId(), "my genesis darc");
+        assertEquals(iID, new InstanceId(bc.getGenesisDarc().getBaseId().getId()));
 
         // set it again and it should fail
         counters.increment();
@@ -82,21 +82,9 @@ public class NamingTest {
                         counters.getCounters(),
                         10));
 
-        // Because the current hashing of the ClientTransaction does not include the command,
-        // the removeAndWait will be interpreted as the same instruction as before and rejected.
-        // Insert a dummy instruction here.
-        //
-        // No need to increment because it failed previously)
-        logger.info("dummy name");
-        namingInst.setAndWait("my genesis darc 2",
-                new InstanceId(bc.getGenesisDarc().getBaseId().getId()),
-                Collections.singletonList(admin),
-                counters.getCounters(),
-                10);
-
         // remove the name
+        // No need to increment because it failed previously)
         logger.info("remove name");
-        counters.increment();
         namingInst.removeAndWait("my genesis darc",
                 new InstanceId(bc.getGenesisDarc().getBaseId().getId()),
                 Collections.singletonList(admin),
@@ -115,7 +103,7 @@ public class NamingTest {
         // try to get the name and it should fail
         logger.info("get name");
         assertThrows(CothorityCommunicationException.class,
-                () -> bc.resolveInstanceID(bc.getGenesisDarc().getBaseId(), "my genesis darc"));
+                () -> namingInst.resolve(bc.getGenesisDarc().getBaseId(), "my genesis darc"));
     }
 
 }

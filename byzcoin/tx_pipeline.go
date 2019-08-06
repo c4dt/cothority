@@ -81,9 +81,9 @@ func (s *txProcessorState) copy() *txProcessorState {
 }
 
 type defaultTxProcessor struct {
+	*Service
 	stopCollect chan bool
 	scID        skipchain.SkipBlockID
-	*Service
 }
 
 func (s *defaultTxProcessor) CollectTx() ([]ClientTransaction, error) {
@@ -127,6 +127,7 @@ func (s *defaultTxProcessor) CollectTx() ([]ClientTransaction, error) {
 		root.MaxNumTxs = 0
 	}
 
+	log.Lvl2("Asking", root.Roster().List, "for Txs")
 	if err := root.Start(); err != nil {
 		log.Error(s.ServerIdentity(), "Failed to start the protocol with error: "+err.Error()+
 			" Start() only returns an error when the protocol is not initialised correctly,"+
@@ -339,7 +340,7 @@ func (p *txPipeline) processTxs(txChan <-chan ClientTransaction, initialState *t
 					log.Lvl3("stopping txs processor")
 					return
 				}
-				txh := tx.Instructions.Hash()
+				txh := tx.Instructions.HashWithSignatures()
 				for _, txHash := range txHashes {
 					if bytes.Compare(txHash, txh) == 0 {
 						log.Lvl2("Got a duplicate transaction, ignoring it")
