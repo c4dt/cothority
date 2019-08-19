@@ -67,8 +67,8 @@ export class PopPartyInstance extends Instance {
         Promise<PopPartyInstance> {
         return new PopPartyInstance(bc, await Instance.fromByzcoin(bc, iid, waitMatch, interval));
     }
-    popPartyStruct: PopPartyStruct;
 
+    popPartyStruct: PopPartyStruct;
     private tmpAttendees: Point[] = [];
 
     constructor(private rpc: ByzCoinRPC, inst: Instance) {
@@ -114,6 +114,13 @@ export class PopPartyInstance extends Instance {
     }
 
     /**
+     * Returns a copy of the list of all attendees.
+     */
+    getAttendees(): Point[] {
+        return this.tmpAttendees.slice();
+    }
+
+    /**
      * Start the party
      *
      * @param signers The list of signers for the transaction
@@ -131,7 +138,7 @@ export class PopPartyInstance extends Instance {
             [],
         );
 
-        const ctx = new ClientTransaction({instructions: [instr]});
+        const ctx = ClientTransaction.make(this.rpc.getProtocolVersion(), instr);
         await ctx.updateCountersAndSign(this.rpc, [signers]);
 
         await this.rpc.sendTransactionAndWait(ctx);
@@ -160,7 +167,7 @@ export class PopPartyInstance extends Instance {
             [new Argument({name: "attendees", value: this.popPartyStruct.attendees.toBytes()})],
         );
 
-        const ctx = new ClientTransaction({instructions: [instr]});
+        const ctx = ClientTransaction.make(this.rpc.getProtocolVersion(), instr);
         await ctx.updateCountersAndSign(this.rpc, [signers]);
 
         await this.rpc.sendTransactionAndWait(ctx);
@@ -171,24 +178,19 @@ export class PopPartyInstance extends Instance {
 
     /**
      * Update the party data
-     * @returns a promise that resolves with an updaed instance
+     * @returns a promise that resolves with an updated instance
      */
     async update(): Promise<PopPartyInstance> {
         const inst = await Instance.fromByzcoin(this.rpc, this.id);
         this.data = inst.data;
         this.popPartyStruct = PopPartyStruct.decode(this.data);
 
-        if (this.popPartyStruct.state === PopPartyInstance.SCANNING &&
-            this.tmpAttendees.length === 0) {
-            this.tmpAttendees = await this.fetchOrgKeys();
-        }
-
         return this;
     }
 
     /**
      * Mine coins for a person using either an existing coinIID, or a
-     * new darc that yet has to be instantiated.
+     * new darc + a coin that yet has to be instantiated.
      *
      * @param secret The secret key of the miner
      * @param coinID The coin instance ID of the miner
@@ -221,31 +223,9 @@ export class PopPartyInstance extends Instance {
 
         // the transaction is not signed but there is a counter-measure against
         // replay attacks server-side
-        const ctx = new ClientTransaction({instructions: [instr]});
+        const ctx = ClientTransaction.make(this.rpc.getProtocolVersion(), instr);
 
         await this.rpc.sendTransactionAndWait(ctx);
         await this.update();
-    }
-
-    async fetchOrgKeys(): Promise<Point[]> {
-        const piDarc = await DarcInstance.fromByzcoin(this.rpc, this.darcID);
-        const orgDarcs = piDarc.darc.rules.list.find((l) => l.action === "invoke:popParty.finalize").getIdentities();
-        const orgPers: Point[] = [];
-
-        for (let orgDarc of orgDarcs) {
-            // Remove leading "darc:" from expression
-            orgDarc = orgDarc.substr(5);
-            const orgCred = CredentialInstance.credentialIID(Buffer.from(orgDarc, "hex"));
-            const cred = await CredentialInstance.fromByzcoin(this.rpc, orgCred);
-            const credPers = cred.getAttribute("personhood", "ed25519");
-            if (!credPers) {
-                throw new Error("found organizer without personhood credential");
-            }
-
-            const pub = PointFactory.fromProto(credPers);
-            orgPers.push(pub);
-        }
-
-        return orgPers;
     }
 }

@@ -1,5 +1,4 @@
 import { Buffer } from "buffer/";
-import { sprintf } from "sprintf-js";
 import util from "util";
 
 const defaultLvl = 2;
@@ -16,16 +15,14 @@ export class Logger {
         return this._lvl;
     }
     _lvl: number;
+    stackFrameOffset: number = 0;
 
     constructor(lvl: number) {
         this._lvl = lvl === undefined ? defaultLvl : lvl;
     }
     out = (...str: string[]) => {
-        const t = new Date();
-        const timeStr = sprintf("%02d:%02d-%02d:%03d",
-            t.getHours(), t.getMinutes(), t.getSeconds(), t.getMilliseconds());
         // tslint:disable-next-line
-        console.log(timeStr, str.join(" "));
+        console.log(str.join(" "));
     }
 
     joinArgs(args: any) {
@@ -43,9 +40,6 @@ export class Logger {
                     if (a.constructor) {
                         type = a.constructor.name;
                     }
-                } else if (type === "o") {
-                    // tslint:disable-next-line
-                    console.dir(a);
                 }
 
                 // Have some special cases for the content
@@ -79,7 +73,7 @@ export class Logger {
             // @ts-ignore
             return (file).padEnd(20);
         } catch (e) {
-            return this.printCaller(new Error("Couldn't get stack - " + e), i + 2);
+            return this.out("Couldn't get stack - " + e.toString(), (i + 2).toString());
         }
     }
 
@@ -88,7 +82,7 @@ export class Logger {
         indent = indent >= 5 ? 0 : indent;
         if (l <= this._lvl) {
             // tslint:disable-next-line
-            this.out(lvlStr[l + 7] + ": " + this.printCaller(new Error(), 3) +
+            this.out(lvlStr[l + 7] + ": " + this.printCaller(new Error(), 3+this.stackFrameOffset) +
                 " -> " + " ".repeat(indent * 2) + this.joinArgs(args));
         }
     }
@@ -182,5 +176,5 @@ export class Logger {
 }
 
 // tslint:disable-next-line
-let Log = new Logger(2);
+let Log = new Logger(defaultLvl);
 export default Log;

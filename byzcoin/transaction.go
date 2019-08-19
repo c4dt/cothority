@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"regexp"
 	"strings"
 	"sync"
@@ -116,9 +117,24 @@ func (ctx *ClientTransaction) SignWith(signers ...darc.Signer) error {
 	return nil
 }
 
+// NewClientTransaction creates a transaction compatible with the version passed
+// in arguments. Depending on the version, the hash will have a different value.
+func NewClientTransaction(v Version, instrs ...Instruction) ClientTransaction {
+	ctx := ClientTransaction{Instructions: instrs}
+	ctx.Instructions.SetVersion(v)
+
+	return ctx
+}
+
 // Hash computes the digest of the hash function
 func (instr Instruction) Hash() []byte {
 	h := sha256.New()
+	instr.hashType(h)
+	instr.hashSigners(h)
+	return h.Sum(nil)
+}
+
+func (instr Instruction) hashType(h hash.Hash) {
 	h.Write(instr.InstanceID[:])
 	var args []Argument
 	switch instr.GetType() {
@@ -129,6 +145,9 @@ func (instr Instruction) Hash() []byte {
 	case InvokeType:
 		h.Write([]byte{1})
 		h.Write([]byte(instr.Invoke.ContractID))
+		if instr.version >= 1 {
+			h.Write([]byte(instr.Invoke.Command))
+		}
 		args = instr.Invoke.Args
 	case DeleteType:
 		h.Write([]byte{2})
@@ -146,6 +165,9 @@ func (instr Instruction) Hash() []byte {
 		h.Write(valueLenBuf)
 		h.Write(a.Value)
 	}
+}
+
+func (instr Instruction) hashSigners(h hash.Hash) {
 	for _, ctr := range instr.SignerCounter {
 		ctrBuf := make([]byte, 8)
 		binary.LittleEndian.PutUint64(ctrBuf, ctr)
@@ -158,7 +180,6 @@ func (instr Instruction) Hash() []byte {
 		h.Write(lenBuf)
 		h.Write(buf)
 	}
-	return h.Sum(nil)
 }
 
 // DeriveID derives a new InstanceID from the hash of the instruction, its signatures,
@@ -301,24 +322,35 @@ func (instr Instruction) GetIdentityStrings() []string {
 	return res
 }
 
+// VerificationOptions is given to VerifyWithOption if the verification needs
+// to be customized.
+type VerificationOptions struct {
+	IgnoreCounters bool
+	EvalAttr       darc.AttrInterpreters
+}
+
 // Verify will look up the darc of the instance pointed to by the instruction
 // and then verify if the signature on the instruction can satisfy the rules of
 // the darc. An error is returned if any of the verification fails.
 func (instr Instruction) Verify(st ReadOnlyStateTrie, msg []byte) error {
-	return instr.VerifyWithOption(st, msg, true)
+	return instr.VerifyWithOption(st, msg, nil)
 }
 
 // VerifyWithOption adds the ability to the Verify(...) method to specify if
 // the counters should be checked. This is used with the "defered" contract
 // where the clients sign the root instruction without the counters.
-func (instr Instruction) VerifyWithOption(st ReadOnlyStateTrie, msg []byte, checkCounters bool) error {
+func (instr Instruction) VerifyWithOption(st ReadOnlyStateTrie, msg []byte, ops *VerificationOptions) error {
+	if ops == nil {
+		ops = &VerificationOptions{}
+	}
+
 	// check the number of signers match with the number of signatures
 	if len(instr.SignerIdentities) != len(instr.Signatures) {
 		return errors.New("lengh of identities does not match the length of signatures")
 	}
 
 	// check the signature counters
-	if checkCounters {
+	if !ops.IgnoreCounters {
 		if err := verifySignerCounters(st, instr.SignerCounter, instr.SignerIdentities); err != nil {
 			return err
 		}
@@ -367,6 +399,10 @@ func (instr Instruction) VerifyWithOption(st ReadOnlyStateTrie, msg []byte, chec
 			return nil
 		}
 		return d
+	}
+
+	if ops.EvalAttr != nil {
+		return darc.EvalExprAttr(d.Rules.Get(darc.Action(instr.Action())), getDarc, ops.EvalAttr, goodIdentities...)
 	}
 	return darc.EvalExpr(d.Rules.Get(darc.Action(instr.Action())), getDarc, goodIdentities...)
 }
@@ -423,6 +459,14 @@ func (instrs Instructions) HashWithSignatures() []byte {
 	return h.Sum(nil)
 }
 
+// SetVersion makes sure the underlying data will use the implementation
+// of the given version.
+func (instrs Instructions) SetVersion(version Version) {
+	for i := range instrs {
+		instrs[i].version = version
+	}
+}
+
 // TxResults is a list of results from executed transactions.
 type TxResults []TxResult
 
@@ -451,6 +495,14 @@ func (txr TxResults) Hash() []byte {
 		}
 	}
 	return h.Sum(nil)
+}
+
+// SetVersion makes sure the underlying data will use the implementation
+// of the given version.
+func (txr TxResults) SetVersion(version Version) {
+	for _, tx := range txr {
+		tx.ClientTransaction.Instructions.SetVersion(version)
+	}
 }
 
 // NewStateChange is a convenience function that fills out a StateChange
