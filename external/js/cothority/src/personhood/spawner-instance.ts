@@ -31,10 +31,6 @@ export default class SpawnerInstance extends Instance {
         return new SpawnerStruct(this.struct);
     }
 
-    get costs(): SpawnerStruct {
-        return new SpawnerStruct(this.struct);
-    }
-
     static readonly contractID = "spawner";
     static readonly argumentCredential = "credential";
     static readonly argumentCredID = "credID";

@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { Message, Properties } from "protobufjs/light";
 import UUID from "pure-uuid";
 import toml from "toml";
+import URL from "url-parse";
 import { EMPTY_BUFFER, registerMessage } from "../protobuf";
 
 const BASE_URL_WS = "ws://";
@@ -172,13 +173,14 @@ export class ServerIdentity extends Message<ServerIdentity> {
      */
     static urlToWebsocket(url: string): string {
         const urlParser = new URL(url);
+        let proto = "";
         switch (urlParser.protocol) {
             case "http:": {
-                urlParser.protocol = "ws:";
+                proto = "ws:";
                 break;
             }
             case "https:": {
-                urlParser.protocol = "wss:";
+                proto = "wss:";
                 break;
             }
             default : {
@@ -186,7 +188,7 @@ export class ServerIdentity extends Message<ServerIdentity> {
                     + urlParser.protocol);
             }
         }
-        let result = urlParser.toString();
+        let result = url.replace(/^https?:/, proto);
         if (result.slice(-1) === "/") {
             result = result.slice(0, -1);
         }
