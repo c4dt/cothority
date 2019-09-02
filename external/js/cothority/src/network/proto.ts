@@ -3,7 +3,6 @@ import { createHash } from "crypto";
 import { Message, Properties } from "protobufjs/light";
 import UUID from "pure-uuid";
 import toml from "toml";
-import URL from "url-parse";
 import { EMPTY_BUFFER, registerMessage } from "../protobuf";
 
 const BASE_URL_WS = "ws://";
