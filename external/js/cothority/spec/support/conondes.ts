@@ -78,7 +78,7 @@ export async function stopConodes(): Promise<void> {
         await docker.getContainer(container.Id).remove();
     }
 
-    if (process.env.CI) {
+    if (process.env.CI && false) {
         // Write the logs for continuous integration as we don't have access
         // to the file
 
