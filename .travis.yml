@@ -108,7 +108,7 @@ jobs:
         - cd external/js/cothority
         - npm ci
         - npm link @dedis/kyber
-        - npm run test
+        - npm run test:nocover
 
     - stage: deploy
       name: "NPM: js > kyber"
