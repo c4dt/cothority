@@ -320,6 +320,8 @@ func (s *Service) RoPaSciList(rq *RoPaSciList) (*RoPaSciListResponse, error) {
 func (s *Service) verifySignature(bcID skipchain.SkipBlockID, identity darc.Identity,
 	msg, signature []byte) (bool, error) {
 	// This is a hardcoded admin darc.
+	//admin, err := hex.DecodeString("b11b8ef2a60d4bd15d1b2859c40f8f2bd6ad14c7ed6860fa4409a024e86e6f50")
+	// This is the official, OpenHouse2019 admin key
 	admin, err := hex.DecodeString("28aa9504ad3d781611b57d98607e1bca25b1c92f3b32a08a7e341c3866db4675")
 	log.ErrFatal(err)
 	bc := s.Service(byzcoin.ServiceName).(*byzcoin.Service)
