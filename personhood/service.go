@@ -142,9 +142,11 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 			Personhood:  rq.NewPoll.Personhood,
 			PollID:      rq.NewPoll.PollID,
 		}
-		_, err := s.getPopContract(rq.ByzCoinID, np.Personhood.Slice())
-		if err != nil {
-			return nil, err
+		if !np.Personhood.Equal(byzcoin.ConfigInstanceID) {
+			_, err := s.getPopContract(rq.ByzCoinID, np.Personhood.Slice())
+			if err != nil {
+				return nil, err
+			}
 		}
 		//np.PollID = random.Bits(256, true, random.New())
 		sps.Polls = append(sps.Polls, &np)
@@ -152,11 +154,13 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 	case rq.List != nil:
 		pr := &PollResponse{Polls: []PollStruct{}}
 		for _, p := range sps.Polls {
-			member := false
-			for _, id := range rq.List.PartyIDs {
-				if id.Equal(p.Personhood) {
-					member = true
-					break
+			member := p.Personhood.Equal(byzcoin.ConfigInstanceID)
+			if !member {
+				for _, id := range rq.List.PartyIDs {
+					if id.Equal(p.Personhood) {
+						member = true
+						break
+					}
 				}
 			}
 			if member {
@@ -183,7 +187,13 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 		msg := append([]byte("Choice"), byte(rq.Answer.Choice))
 		scope := append([]byte("Poll"), append(rq.ByzCoinID, poll.PollID...)...)
 		scopeHash := sha256.Sum256(scope)
-		ph, err := s.getPopContract(rq.ByzCoinID, poll.Personhood.Slice())
+		var ph *ContractPopParty
+		var err error
+		if poll.Personhood.Equal(byzcoin.ConfigInstanceID){
+			ph, err = s.getPopContract(rq.ByzCoinID, rq.Answer.PollID)
+		} else {
+			ph, err = s.getPopContract(rq.ByzCoinID, poll.Personhood.Slice())
+		}
 		if err != nil {
 			return nil, err
 		}

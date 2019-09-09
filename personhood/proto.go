@@ -197,9 +197,10 @@ type PollList struct {
 // And the message must be
 //   'Choice' + byte(Choice)
 type PollAnswer struct {
-	PollID []byte
-	Choice int
-	LRS    []byte
+	PollID  []byte
+	Choice  int
+	LRS     []byte
+	PartyID []byte `protobuf:"opt"`
 }
 
 // PollStruct represents one poll with answers.
