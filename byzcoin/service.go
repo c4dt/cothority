@@ -533,9 +533,7 @@ func (s *Service) CheckAuthorization(req *CheckAuthorization) (resp *CheckAuthor
 	for _, i := range req.Identities {
 		ids = append(ids, i.String())
 	}
-	log.Print("Checking ids", ids)
 	for _, r := range d.Rules.List {
-		log.Print("checking rule", r)
 		err = darc.EvalExprDarc(r.Expr, getDarcs, true, ids...)
 		if err == nil {
 			resp.Actions = append(resp.Actions, r.Action)

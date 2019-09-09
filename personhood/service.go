@@ -299,7 +299,6 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 			// TODO: Check signature
 			admin, err := hex.DecodeString("28aa9504ad3d781611b57d98607e1bca25b1c92f3b32a08a7e341c3866db4675")
 			log.ErrFatal(err)
-			log.Print("identity is:", rq.PartyDelete.Identity)
 			bc := s.Service(byzcoin.ServiceName).(*byzcoin.Service)
 			auth, err := bc.CheckAuthorization(&byzcoin.CheckAuthorization{
 				Version:    byzcoin.CurrentVersion,
@@ -312,13 +311,11 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 			}
 			sign := false
 			for _, action := range auth.Actions {
-				log.Print("Got action:", action)
 				sign = sign || action == "_sign"
 			}
 			if !sign {
 				return nil, errors.New("this identity is not part of the admin-darc")
 			}
-			log.Print("Deleting party", rq.PartyDelete.PartyID.Slice())
 			delete(s.storage.Parties, string(rq.PartyDelete.PartyID.Slice()))
 		}
 	}
