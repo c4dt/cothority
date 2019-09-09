@@ -2,6 +2,7 @@ package personhood
 
 import (
 	"go.dedis.ch/cothority/v3/byzcoin"
+	"go.dedis.ch/cothority/v3/darc"
 	"go.dedis.ch/cothority/v3/skipchain"
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/onet/v3"
@@ -15,6 +16,7 @@ import (
 //
 // import "byzcoin.proto";
 // import "onet.proto";
+// import "darc.proto";
 //
 // option java_package = "ch.epfl.dedis.lib.proto";
 // option java_outer_classname = "Personhood";
@@ -24,6 +26,14 @@ import (
 type PartyList struct {
 	NewParty    *Party
 	WipeParties *bool
+	PartyDelete *PartyDelete
+}
+
+// PartyDelete can be sent from one of the admins to remove a party.
+type PartyDelete struct {
+	PartyID   byzcoin.InstanceID
+	Identity  darc.Identity
+	Signature []byte
 }
 
 // PartyListResponse holds a list of all known parties so far. Only parties in PreBarrier

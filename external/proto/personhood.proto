@@ -3,6 +3,7 @@ package personhood;
 
 import "byzcoin.proto";
 import "onet.proto";
+import "darc.proto";
 
 option java_package = "ch.epfl.dedis.lib.proto";
 option java_outer_classname = "Personhood";
@@ -12,6 +13,14 @@ option java_outer_classname = "Personhood";
 message PartyList {
   optional Party newparty = 1;
   optional bool wipeparties = 2;
+  optional PartyDelete partydelete = 3;
+}
+
+// PartyDelete can be sent from one of the admins to remove a party.
+message PartyDelete {
+  required bytes partyid = 1;
+  required darc.Identity identity = 2;
+  required bytes signature = 3;
 }
 
 // PartyListResponse holds a list of all known parties so far. Only parties in PreBarrier
