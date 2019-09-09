@@ -347,7 +347,7 @@ func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
 		}
 	}
 	reply := &ChallengeReply{}
-	reply.List = make([]ChallengeCandidate, len(s.storage.Challenge), 0)
+	reply.List = make([]ChallengeCandidate, 0, len(s.storage.Challenge))
 	for id, score := range s.storage.Challenge {
 		reply.List = append(reply.List,
 			ChallengeCandidate{byzcoin.NewInstanceID([]byte(id)), score})
