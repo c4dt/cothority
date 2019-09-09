@@ -253,3 +253,21 @@ message Meetup {
 message MeetupResponse {
   repeated UserLocation users = 1;
 }
+
+// Challenge allows a participant to sign up and to fetch the latest list of scores.
+message Challenge {
+  optional ChallengeCandidate update = 1;
+}
+
+// ChallengeCandidate is the information the client sends to the server.
+// Some of the information is not verifiable for the moment (meetups and references).
+message ChallengeCandidate {
+  required bytes credential = 1;
+  required sint32 score = 2;
+}
+
+// ChallengeReply is sent back to the client and holds a list of pairs of Credential/Score
+// to display on the client's phone.
+message ChallengeReply {
+  repeated ChallengeCandidate list = 1;
+}

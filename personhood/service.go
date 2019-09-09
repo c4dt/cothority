@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"go.dedis.ch/cothority/v3/darc"
+	"sort"
 	"time"
 
 	"go.dedis.ch/cothority/v3/skipchain"
@@ -332,6 +333,29 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 		return nil, err
 	}
 	return &PartyListResponse{Parties: parties}, nil
+}
+
+// Challenge is a special endpoint for the OpenHouse2019 event and allows for signing up
+// people and comparing their results.
+func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
+	log.Lvlf2("Challenge: %+v", rq)
+	if rq.Update != nil {
+		s.storage.Challenge[string(rq.Update.Credential.Slice())] = rq.Update.Score
+		err := s.save()
+		if err != nil {
+			return nil, err
+		}
+	}
+	reply := &ChallengeReply{}
+	reply.List = make([]ChallengeCandidate, len(s.storage.Challenge), 0)
+	for id, score := range s.storage.Challenge {
+		reply.List = append(reply.List,
+			ChallengeCandidate{byzcoin.NewInstanceID([]byte(id)), score})
+	}
+	sort.Slice(reply.List, func(i, j int) bool {
+		return reply.List[i].Score < reply.List[j].Score
+	})
+	return reply, nil
 }
 
 func (s *Service) byzcoinService() *byzcoin.Service {

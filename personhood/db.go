@@ -50,6 +50,7 @@ type storage1 struct {
 	RoPaSci []*RoPaSci
 	Parties map[string]*Party
 	Polls   map[string]*storagePolls
+	Challenge map[string]int
 
 	sync.Mutex
 }

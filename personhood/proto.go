@@ -266,3 +266,21 @@ type Meetup struct {
 type MeetupResponse struct {
 	Users []UserLocation
 }
+
+// Challenge allows a participant to sign up and to fetch the latest list of scores.
+type Challenge struct {
+	Update *ChallengeCandidate
+}
+
+// ChallengeCandidate is the information the client sends to the server.
+// Some of the information is not verifiable for the moment (meetups and references).
+type ChallengeCandidate struct {
+	Credential byzcoin.InstanceID
+	Score      int
+}
+
+// ChallengeReply is sent back to the client and holds a list of pairs of Credential/Score
+// to display on the client's phone.
+type ChallengeReply struct {
+	List []ChallengeCandidate
+}
