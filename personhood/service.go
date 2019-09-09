@@ -400,5 +400,8 @@ func newService(c *onet.Context) (onet.Service, error) {
 	if len(s.storage.Polls) == 0 {
 		s.storage.Polls = make(map[string]*storagePolls)
 	}
+	if len(s.storage.Challenge) == 0 {
+		s.storage.Challenge = make(map[string]int)
+	}
 	return s, nil
 }
