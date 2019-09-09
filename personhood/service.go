@@ -133,6 +133,7 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 		s.storage.Polls[string(rq.ByzCoinID)] = &storagePolls{}
 		return s.Poll(rq)
 	}
+	log.Lvlf2("%s: Getting %+v", s.ServerIdentity(), rq)
 	switch {
 	case rq.NewPoll != nil:
 		np := PollStruct{
@@ -189,16 +190,18 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 		scopeHash := sha256.Sum256(scope)
 		var ph *ContractPopParty
 		var err error
-		if poll.Personhood.Equal(byzcoin.ConfigInstanceID){
-			ph, err = s.getPopContract(rq.ByzCoinID, rq.Answer.PollID)
+		if poll.Personhood.Equal(byzcoin.ConfigInstanceID) {
+			ph, err = s.getPopContract(rq.ByzCoinID, rq.Answer.PartyID.Slice())
 		} else {
 			ph, err = s.getPopContract(rq.ByzCoinID, poll.Personhood.Slice())
 		}
 		if err != nil {
+			log.Error(err)
 			return nil, err
 		}
 		tag, err := anon.Verify(&suiteBlake2s{}, msg, ph.Attendees.Keys, scopeHash[:], rq.Answer.LRS)
 		if err != nil {
+			log.Error(err)
 			return nil, err
 		}
 		var update bool
@@ -214,6 +217,26 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 			poll.Chosen = append(poll.Chosen, PollChoice{Choice: rq.Answer.Choice, LRSTag: tag})
 		}
 		return &PollResponse{Polls: []PollStruct{*poll}}, s.save()
+	case rq.Delete != nil:
+		ok, err := s.verifySignature(rq.ByzCoinID, rq.Delete.Identity, rq.Delete.PollID, rq.Delete.Signature)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errors.New("user is not allowed to do admin things")
+		}
+		for bcID, polls := range s.storage.Polls {
+			if bcID == string(rq.ByzCoinID) {
+				for i, poll := range polls.Polls {
+					if bytes.Compare(poll.PollID, rq.Delete.PollID) == 0{
+						polls.Polls = append(polls.Polls[0:i], polls.Polls[i+1:]...)
+						break
+					}
+				}
+				return &PollResponse{Polls: []PollStruct{}}, s.save()
+			}
+		}
+		return nil, errors.New("didn't find poll to delete");
 	default:
 		s.storage.Polls[string(rq.ByzCoinID)] = &storagePolls{Polls: []*PollStruct{}}
 		return &PollResponse{Polls: []PollStruct{}}, s.save()
@@ -293,6 +316,29 @@ func (s *Service) RoPaSciList(rq *RoPaSciList) (*RoPaSciListResponse, error) {
 	return &RoPaSciListResponse{RoPaScis: roPaScis}, nil
 }
 
+// TODO: Check signature
+func (s *Service) verifySignature(bcID skipchain.SkipBlockID, identity darc.Identity,
+	msg, signature []byte) (bool, error) {
+	// This is a hardcoded admin darc.
+	admin, err := hex.DecodeString("28aa9504ad3d781611b57d98607e1bca25b1c92f3b32a08a7e341c3866db4675")
+	log.ErrFatal(err)
+	bc := s.Service(byzcoin.ServiceName).(*byzcoin.Service)
+	auth, err := bc.CheckAuthorization(&byzcoin.CheckAuthorization{
+		Version:    byzcoin.CurrentVersion,
+		ByzCoinID:  bcID,
+		DarcID:     admin,
+		Identities: []darc.Identity{identity},
+	})
+	if err != nil {
+		return false, err
+	}
+	sign := false
+	for _, action := range auth.Actions {
+		sign = sign || action == "_sign"
+	}
+	return sign, nil
+}
+
 // PartyList can either store a new party in the list, or just return the list of
 // available parties. It doesn't return finalized parties, so as not to confuse the
 // clients, but keeps them in the list for other methods like ReadMessage.
@@ -307,22 +353,10 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 	}
 	if rq.PartyDelete != nil {
 		if party := s.storage.Parties[string(rq.PartyDelete.PartyID.Slice())]; party != nil {
-			// TODO: Check signature
-			admin, err := hex.DecodeString("28aa9504ad3d781611b57d98607e1bca25b1c92f3b32a08a7e341c3866db4675")
-			log.ErrFatal(err)
-			bc := s.Service(byzcoin.ServiceName).(*byzcoin.Service)
-			auth, err := bc.CheckAuthorization(&byzcoin.CheckAuthorization{
-				Version:    byzcoin.CurrentVersion,
-				ByzCoinID:  party.ByzCoinID,
-				DarcID:     admin,
-				Identities: []darc.Identity{rq.PartyDelete.Identity},
-			})
+			sign, err := s.verifySignature(party.ByzCoinID, rq.PartyDelete.Identity,
+				rq.PartyDelete.PartyID.Slice(), rq.PartyDelete.Signature)
 			if err != nil {
 				return nil, err
-			}
-			sign := false
-			for _, action := range auth.Actions {
-				sign = sign || action == "_sign"
 			}
 			if !sign {
 				return nil, errors.New("this identity is not part of the admin-darc")

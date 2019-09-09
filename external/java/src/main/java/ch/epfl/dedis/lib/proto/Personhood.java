@@ -17705,6 +17705,15 @@ public final class Personhood {
      * <code>optional .personhood.PollAnswer answer = 4;</code>
      */
     ch.epfl.dedis.lib.proto.Personhood.PollAnswerOrBuilder getAnswerOrBuilder();
+
+    /**
+     * <code>optional bytes delete = 5;</code>
+     */
+    boolean hasDelete();
+    /**
+     * <code>optional bytes delete = 5;</code>
+     */
+    com.google.protobuf.ByteString getDelete();
   }
   /**
    * <pre>
@@ -17724,6 +17733,7 @@ public final class Personhood {
     }
     private Poll() {
       byzcoinid_ = com.google.protobuf.ByteString.EMPTY;
+      delete_ = com.google.protobuf.ByteString.EMPTY;
     }
 
     @java.lang.Override
@@ -17792,6 +17802,11 @@ public final class Personhood {
                 answer_ = subBuilder.buildPartial();
               }
               bitField0_ |= 0x00000008;
+              break;
+            }
+            case 42: {
+              bitField0_ |= 0x00000010;
+              delete_ = input.readBytes();
               break;
             }
             default: {
@@ -17905,6 +17920,21 @@ public final class Personhood {
       return answer_ == null ? ch.epfl.dedis.lib.proto.Personhood.PollAnswer.getDefaultInstance() : answer_;
     }
 
+    public static final int DELETE_FIELD_NUMBER = 5;
+    private com.google.protobuf.ByteString delete_;
+    /**
+     * <code>optional bytes delete = 5;</code>
+     */
+    public boolean hasDelete() {
+      return ((bitField0_ & 0x00000010) == 0x00000010);
+    }
+    /**
+     * <code>optional bytes delete = 5;</code>
+     */
+    public com.google.protobuf.ByteString getDelete() {
+      return delete_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -17947,6 +17977,9 @@ public final class Personhood {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeMessage(4, getAnswer());
       }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        output.writeBytes(5, delete_);
+      }
       unknownFields.writeTo(output);
     }
 
@@ -17971,6 +18004,10 @@ public final class Personhood {
       if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(4, getAnswer());
+      }
+      if (((bitField0_ & 0x00000010) == 0x00000010)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(5, delete_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -18008,6 +18045,11 @@ public final class Personhood {
         result = result && getAnswer()
             .equals(other.getAnswer());
       }
+      result = result && (hasDelete() == other.hasDelete());
+      if (hasDelete()) {
+        result = result && getDelete()
+            .equals(other.getDelete());
+      }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -18034,6 +18076,10 @@ public final class Personhood {
       if (hasAnswer()) {
         hash = (37 * hash) + ANSWER_FIELD_NUMBER;
         hash = (53 * hash) + getAnswer().hashCode();
+      }
+      if (hasDelete()) {
+        hash = (37 * hash) + DELETE_FIELD_NUMBER;
+        hash = (53 * hash) + getDelete().hashCode();
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -18195,6 +18241,8 @@ public final class Personhood {
           answerBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000008);
+        delete_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000010);
         return this;
       }
 
@@ -18251,6 +18299,10 @@ public final class Personhood {
         } else {
           result.answer_ = answerBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000010) == 0x00000010)) {
+          to_bitField0_ |= 0x00000010;
+        }
+        result.delete_ = delete_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -18311,6 +18363,9 @@ public final class Personhood {
         }
         if (other.hasAnswer()) {
           mergeAnswer(other.getAnswer());
+        }
+        if (other.hasDelete()) {
+          setDelete(other.getDelete());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -18742,6 +18797,41 @@ public final class Personhood {
           answer_ = null;
         }
         return answerBuilder_;
+      }
+
+      private com.google.protobuf.ByteString delete_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes delete = 5;</code>
+       */
+      public boolean hasDelete() {
+        return ((bitField0_ & 0x00000010) == 0x00000010);
+      }
+      /**
+       * <code>optional bytes delete = 5;</code>
+       */
+      public com.google.protobuf.ByteString getDelete() {
+        return delete_;
+      }
+      /**
+       * <code>optional bytes delete = 5;</code>
+       */
+      public Builder setDelete(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000010;
+        delete_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bytes delete = 5;</code>
+       */
+      public Builder clearDelete() {
+        bitField0_ = (bitField0_ & ~0x00000010);
+        delete_ = getDefaultInstance().getDelete();
+        onChanged();
+        return this;
       }
       @java.lang.Override
       public final Builder setUnknownFields(
@@ -19403,6 +19493,15 @@ public final class Personhood {
      * <code>required bytes lrs = 3;</code>
      */
     com.google.protobuf.ByteString getLrs();
+
+    /**
+     * <code>optional bytes partyid = 4;</code>
+     */
+    boolean hasPartyid();
+    /**
+     * <code>optional bytes partyid = 4;</code>
+     */
+    com.google.protobuf.ByteString getPartyid();
   }
   /**
    * <pre>
@@ -19428,6 +19527,7 @@ public final class Personhood {
       pollid_ = com.google.protobuf.ByteString.EMPTY;
       choice_ = 0;
       lrs_ = com.google.protobuf.ByteString.EMPTY;
+      partyid_ = com.google.protobuf.ByteString.EMPTY;
     }
 
     @java.lang.Override
@@ -19467,6 +19567,11 @@ public final class Personhood {
             case 26: {
               bitField0_ |= 0x00000004;
               lrs_ = input.readBytes();
+              break;
+            }
+            case 34: {
+              bitField0_ |= 0x00000008;
+              partyid_ = input.readBytes();
               break;
             }
             default: {
@@ -19547,6 +19652,21 @@ public final class Personhood {
       return lrs_;
     }
 
+    public static final int PARTYID_FIELD_NUMBER = 4;
+    private com.google.protobuf.ByteString partyid_;
+    /**
+     * <code>optional bytes partyid = 4;</code>
+     */
+    public boolean hasPartyid() {
+      return ((bitField0_ & 0x00000008) == 0x00000008);
+    }
+    /**
+     * <code>optional bytes partyid = 4;</code>
+     */
+    public com.google.protobuf.ByteString getPartyid() {
+      return partyid_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -19582,6 +19702,9 @@ public final class Personhood {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         output.writeBytes(3, lrs_);
       }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        output.writeBytes(4, partyid_);
+      }
       unknownFields.writeTo(output);
     }
 
@@ -19602,6 +19725,10 @@ public final class Personhood {
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(3, lrs_);
+      }
+      if (((bitField0_ & 0x00000008) == 0x00000008)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(4, partyid_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -19634,6 +19761,11 @@ public final class Personhood {
         result = result && getLrs()
             .equals(other.getLrs());
       }
+      result = result && (hasPartyid() == other.hasPartyid());
+      if (hasPartyid()) {
+        result = result && getPartyid()
+            .equals(other.getPartyid());
+      }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -19656,6 +19788,10 @@ public final class Personhood {
       if (hasLrs()) {
         hash = (37 * hash) + LRS_FIELD_NUMBER;
         hash = (53 * hash) + getLrs().hashCode();
+      }
+      if (hasPartyid()) {
+        hash = (37 * hash) + PARTYID_FIELD_NUMBER;
+        hash = (53 * hash) + getPartyid().hashCode();
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -19804,6 +19940,8 @@ public final class Personhood {
         bitField0_ = (bitField0_ & ~0x00000002);
         lrs_ = com.google.protobuf.ByteString.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000004);
+        partyid_ = com.google.protobuf.ByteString.EMPTY;
+        bitField0_ = (bitField0_ & ~0x00000008);
         return this;
       }
 
@@ -19844,6 +19982,10 @@ public final class Personhood {
           to_bitField0_ |= 0x00000004;
         }
         result.lrs_ = lrs_;
+        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
+          to_bitField0_ |= 0x00000008;
+        }
+        result.partyid_ = partyid_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -19901,6 +20043,9 @@ public final class Personhood {
         }
         if (other.hasLrs()) {
           setLrs(other.getLrs());
+        }
+        if (other.hasPartyid()) {
+          setPartyid(other.getPartyid());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -20039,6 +20184,41 @@ public final class Personhood {
       public Builder clearLrs() {
         bitField0_ = (bitField0_ & ~0x00000004);
         lrs_ = getDefaultInstance().getLrs();
+        onChanged();
+        return this;
+      }
+
+      private com.google.protobuf.ByteString partyid_ = com.google.protobuf.ByteString.EMPTY;
+      /**
+       * <code>optional bytes partyid = 4;</code>
+       */
+      public boolean hasPartyid() {
+        return ((bitField0_ & 0x00000008) == 0x00000008);
+      }
+      /**
+       * <code>optional bytes partyid = 4;</code>
+       */
+      public com.google.protobuf.ByteString getPartyid() {
+        return partyid_;
+      }
+      /**
+       * <code>optional bytes partyid = 4;</code>
+       */
+      public Builder setPartyid(com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  bitField0_ |= 0x00000008;
+        partyid_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional bytes partyid = 4;</code>
+       */
+      public Builder clearPartyid() {
+        bitField0_ = (bitField0_ & ~0x00000008);
+        partyid_ = getDefaultInstance().getPartyid();
         onChanged();
         return this;
       }
@@ -29852,35 +30032,36 @@ public final class Personhood {
       "ocation\030\004 \002(\t\"]\n\016FinalStatement\022!\n\004desc\030" +
       "\001 \001(\0132\023.personhood.PopDesc\022(\n\tattendees\030" +
       "\002 \002(\0132\025.personhood.Attendees\"\031\n\tAttendee" +
-      "s\022\014\n\004keys\030\001 \003(\014\"\025\n\006LRSTag\022\013\n\003tag\030\001 \002(\014\"\216" +
+      "s\022\014\n\004keys\030\001 \003(\014\"\025\n\006LRSTag\022\013\n\003tag\030\001 \002(\014\"\236" +
       "\001\n\004Poll\022\021\n\tbyzcoinid\030\001 \002(\014\022\'\n\007newpoll\030\002 " +
       "\001(\0132\026.personhood.PollStruct\022\"\n\004list\030\003 \001(" +
       "\0132\024.personhood.PollList\022&\n\006answer\030\004 \001(\0132" +
-      "\026.personhood.PollAnswer\"\034\n\010PollList\022\020\n\010p" +
-      "artyids\030\001 \003(\014\"9\n\nPollAnswer\022\016\n\006pollid\030\001 " +
-      "\002(\014\022\016\n\006choice\030\002 \002(\021\022\013\n\003lrs\030\003 \002(\014\"\215\001\n\nPol" +
-      "lStruct\022\022\n\npersonhood\030\001 \002(\014\022\016\n\006pollid\030\002 " +
-      "\001(\014\022\r\n\005title\030\003 \002(\t\022\023\n\013description\030\004 \002(\t\022" +
-      "\017\n\007choices\030\005 \003(\t\022&\n\006chosen\030\006 \003(\0132\026.perso" +
-      "nhood.PollChoice\",\n\nPollChoice\022\016\n\006choice" +
-      "\030\001 \002(\021\022\016\n\006lrstag\030\002 \002(\014\"5\n\014PollResponse\022%" +
-      "\n\005polls\030\001 \003(\0132\026.personhood.PollStruct\"\016\n" +
-      "\014Capabilities\"D\n\024CapabilitiesResponse\022,\n" +
-      "\014capabilities\030\001 \003(\0132\026.personhood.Capabil" +
-      "ity\"/\n\nCapability\022\020\n\010endpoint\030\001 \002(\t\022\017\n\007v" +
-      "ersion\030\002 \002(\014\"\212\001\n\014UserLocation\022\021\n\tpublick" +
-      "ey\030\001 \002(\014\022\025\n\rcredentialiid\030\002 \001(\014\0220\n\ncrede" +
-      "ntial\030\003 \001(\0132\034.personhood.CredentialStruc" +
-      "t\022\020\n\010location\030\004 \001(\t\022\014\n\004time\030\005 \002(\022\"F\n\006Mee" +
-      "tup\022.\n\014userlocation\030\001 \001(\0132\030.personhood.U" +
-      "serLocation\022\014\n\004wipe\030\002 \001(\010\"9\n\016MeetupRespo" +
-      "nse\022\'\n\005users\030\001 \003(\0132\030.personhood.UserLoca" +
-      "tion\";\n\tChallenge\022.\n\006update\030\001 \001(\0132\036.pers" +
-      "onhood.ChallengeCandidate\"7\n\022ChallengeCa" +
-      "ndidate\022\022\n\ncredential\030\001 \002(\014\022\r\n\005score\030\002 \002" +
-      "(\021\">\n\016ChallengeReply\022,\n\004list\030\001 \003(\0132\036.per" +
-      "sonhood.ChallengeCandidateB%\n\027ch.epfl.de" +
-      "dis.lib.protoB\nPersonhood"
+      "\026.personhood.PollAnswer\022\016\n\006delete\030\005 \001(\014\"" +
+      "\034\n\010PollList\022\020\n\010partyids\030\001 \003(\014\"J\n\nPollAns" +
+      "wer\022\016\n\006pollid\030\001 \002(\014\022\016\n\006choice\030\002 \002(\021\022\013\n\003l" +
+      "rs\030\003 \002(\014\022\017\n\007partyid\030\004 \001(\014\"\215\001\n\nPollStruct" +
+      "\022\022\n\npersonhood\030\001 \002(\014\022\016\n\006pollid\030\002 \001(\014\022\r\n\005" +
+      "title\030\003 \002(\t\022\023\n\013description\030\004 \002(\t\022\017\n\007choi" +
+      "ces\030\005 \003(\t\022&\n\006chosen\030\006 \003(\0132\026.personhood.P" +
+      "ollChoice\",\n\nPollChoice\022\016\n\006choice\030\001 \002(\021\022" +
+      "\016\n\006lrstag\030\002 \002(\014\"5\n\014PollResponse\022%\n\005polls" +
+      "\030\001 \003(\0132\026.personhood.PollStruct\"\016\n\014Capabi" +
+      "lities\"D\n\024CapabilitiesResponse\022,\n\014capabi" +
+      "lities\030\001 \003(\0132\026.personhood.Capability\"/\n\n" +
+      "Capability\022\020\n\010endpoint\030\001 \002(\t\022\017\n\007version\030" +
+      "\002 \002(\014\"\212\001\n\014UserLocation\022\021\n\tpublickey\030\001 \002(" +
+      "\014\022\025\n\rcredentialiid\030\002 \001(\014\0220\n\ncredential\030\003" +
+      " \001(\0132\034.personhood.CredentialStruct\022\020\n\010lo" +
+      "cation\030\004 \001(\t\022\014\n\004time\030\005 \002(\022\"F\n\006Meetup\022.\n\014" +
+      "userlocation\030\001 \001(\0132\030.personhood.UserLoca" +
+      "tion\022\014\n\004wipe\030\002 \001(\010\"9\n\016MeetupResponse\022\'\n\005" +
+      "users\030\001 \003(\0132\030.personhood.UserLocation\";\n" +
+      "\tChallenge\022.\n\006update\030\001 \001(\0132\036.personhood." +
+      "ChallengeCandidate\"7\n\022ChallengeCandidate" +
+      "\022\022\n\ncredential\030\001 \002(\014\022\r\n\005score\030\002 \002(\021\">\n\016C" +
+      "hallengeReply\022,\n\004list\030\001 \003(\0132\036.personhood" +
+      ".ChallengeCandidateB%\n\027ch.epfl.dedis.lib" +
+      ".protoB\nPersonhood"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -30010,7 +30191,7 @@ public final class Personhood {
     internal_static_personhood_Poll_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_personhood_Poll_descriptor,
-        new java.lang.String[] { "Byzcoinid", "Newpoll", "List", "Answer", });
+        new java.lang.String[] { "Byzcoinid", "Newpoll", "List", "Answer", "Delete", });
     internal_static_personhood_PollList_descriptor =
       getDescriptor().getMessageTypes().get(19);
     internal_static_personhood_PollList_fieldAccessorTable = new
@@ -30022,7 +30203,7 @@ public final class Personhood {
     internal_static_personhood_PollAnswer_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_personhood_PollAnswer_descriptor,
-        new java.lang.String[] { "Pollid", "Choice", "Lrs", });
+        new java.lang.String[] { "Pollid", "Choice", "Lrs", "Partyid", });
     internal_static_personhood_PollStruct_descriptor =
       getDescriptor().getMessageTypes().get(21);
     internal_static_personhood_PollStruct_fieldAccessorTable = new

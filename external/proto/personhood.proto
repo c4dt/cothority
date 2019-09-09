@@ -171,6 +171,7 @@ message Poll {
   optional PollStruct newpoll = 2;
   optional PollList list = 3;
   optional PollAnswer answer = 4;
+  optional bytes delete = 5;
 }
 
 // PollList returns all known storagePolls for this byzcoinID
@@ -187,6 +188,7 @@ message PollAnswer {
   required bytes pollid = 1;
   required sint32 choice = 2;
   required bytes lrs = 3;
+  optional bytes partyid = 4;
 }
 
 // PollStruct represents one poll with answers.

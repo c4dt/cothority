@@ -184,6 +184,16 @@ type Poll struct {
 	NewPoll   *PollStruct
 	List      *PollList
 	Answer    *PollAnswer
+	Delete    *PollDelete
+}
+
+// PollDelete has the poll to be deleted, and the signature proving that
+// the client has the right to do so.
+// The signature is a Schnorr signature on the PollID.
+type PollDelete struct {
+	Identity  darc.Identity
+	PollID    []byte
+	Signature []byte
 }
 
 // PollList returns all known storagePolls for this byzcoinID
@@ -200,7 +210,7 @@ type PollAnswer struct {
 	PollID  []byte
 	Choice  int
 	LRS     []byte
-	PartyID []byte `protobuf:"opt"`
+	PartyID byzcoin.InstanceID `protobuf:"opt"`
 }
 
 // PollStruct represents one poll with answers.
