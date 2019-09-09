@@ -353,7 +353,7 @@ func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
 			ChallengeCandidate{byzcoin.NewInstanceID([]byte(id)), score})
 	}
 	sort.Slice(reply.List, func(i, j int) bool {
-		return reply.List[i].Score < reply.List[j].Score
+		return reply.List[i].Score > reply.List[j].Score
 	})
 	return reply, nil
 }
