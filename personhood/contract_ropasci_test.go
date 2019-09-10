@@ -180,8 +180,9 @@ func (sr *testRPS) newCalypsoRPS(move int, coinID byzcoin.InstanceID, stake uint
 	moveHash := sha256.Sum256(r.preHash)
 	writeCommit := sha256.Sum256(moveHash[:])
 	ropasci := RoPaSciStruct{
-		Description:     "test",
-		FirstPlayerHash: moveHash[:],
+		Description:        "test",
+		FirstPlayerHash:    moveHash[:],
+		FirstPlayerAccount: sr.coin1.id,
 	}
 	ropasciBuf, err := protobuf.Encode(&ropasci)
 	require.NoError(sr.t, err)
@@ -210,7 +211,6 @@ func (sr *testRPS) newCalypsoRPS(move int, coinID byzcoin.InstanceID, stake uint
 				Args: byzcoin.Arguments{
 					{Name: "struct", Value: ropasciBuf},
 					{Name: "secret", Value: wrBuf},
-					{Name: "account", Value: sr.coin1.id.Slice()},
 				},
 			},
 		},

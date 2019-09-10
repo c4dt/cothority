@@ -111,12 +111,9 @@ func (c ContractRoPaSci) Spawn(rst byzcoin.ReadOnlyStateTrie, inst byzcoin.Instr
 	c.FirstPlayer = -1
 	cout[0].Value = 0
 	if secret := inst.Spawn.Args.Search("secret"); secret != nil {
-		account := inst.Spawn.Args.Search("account")
-		if account == nil {
-			log.Error()
-			return nil, nil, errors.New("when using secret, need to give account for player 1")
+		if c.FirstPlayerAccount.Equal(byzcoin.ConfigInstanceID){
+			return nil, nil, errors.New("need to have FirstPlayerAccount when using calypso")
 		}
-		c.FirstPlayerAccount = byzcoin.NewInstanceID(account)
 		var write calypso.Write
 		err = protobuf.DecodeWithConstructors(secret, &write, network.DefaultConstructors(cothority.Suite))
 		if err != nil {
