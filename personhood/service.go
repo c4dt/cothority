@@ -355,7 +355,7 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 	}
 	if rq.PartyDelete != nil {
 		log.Print("Checking if party is in storage")
-		for id, p := range s.storage.Parties{
+		for id := range s.storage.Parties{
 			log.Printf("%x - %x", id, rq.PartyDelete.PartyID)
 		}
 		if party := s.storage.Parties[string(rq.PartyDelete.PartyID.Slice())]; party != nil {
