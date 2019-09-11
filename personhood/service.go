@@ -355,8 +355,8 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 	}
 	if rq.PartyDelete != nil {
 		log.Print("Checking if party is in storage")
-		for _, p := range s.storage.Parties{
-			log.Printf("%+v", p, rq.PartyDelete.PartyID)
+		for id, p := range s.storage.Parties{
+			log.Printf("%x - %x", id, rq.PartyDelete.PartyID)
 		}
 		if party := s.storage.Parties[string(rq.PartyDelete.PartyID.Slice())]; party != nil {
 			sign, err := s.verifySignature(party.ByzCoinID, rq.PartyDelete.Identity,
