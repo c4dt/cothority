@@ -354,6 +354,10 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 		s.storage.Parties[string(rq.NewParty.InstanceID.Slice())] = rq.NewParty
 	}
 	if rq.PartyDelete != nil {
+		log.Print("Checking if party is in storage")
+		for _, p := range s.storage.Parties{
+			log.Printf("%+v", p, rq.PartyDelete.PartyID)
+		}
 		if party := s.storage.Parties[string(rq.PartyDelete.PartyID.Slice())]; party != nil {
 			sign, err := s.verifySignature(party.ByzCoinID, rq.PartyDelete.Identity,
 				rq.PartyDelete.PartyID.Slice(), rq.PartyDelete.Signature)
