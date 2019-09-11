@@ -358,11 +358,14 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 			sign, err := s.verifySignature(party.ByzCoinID, rq.PartyDelete.Identity,
 				rq.PartyDelete.PartyID.Slice(), rq.PartyDelete.Signature)
 			if err != nil {
+				log.Print("error checking authorization:", err)
 				return nil, err
 			}
 			if !sign {
+				log.Print("not in admin darc");
 				return nil, errors.New("this identity is not part of the admin-darc")
 			}
+			log.Print("Deleting party", rq.PartyDelete.PartyID.Slice())
 			delete(s.storage.Parties, string(rq.PartyDelete.PartyID.Slice()))
 		}
 	}
