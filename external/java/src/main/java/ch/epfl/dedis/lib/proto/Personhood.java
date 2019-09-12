@@ -3568,6 +3568,37 @@ public final class Personhood {
      * <code>optional bool wipe = 2;</code>
      */
     boolean getWipe();
+
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    boolean hasLock();
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    ch.epfl.dedis.lib.proto.Personhood.RoPaSci getLock();
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder getLockOrBuilder();
   }
   /**
    * <pre>
@@ -3630,6 +3661,19 @@ public final class Personhood {
             case 16: {
               bitField0_ |= 0x00000002;
               wipe_ = input.readBool();
+              break;
+            }
+            case 26: {
+              ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder subBuilder = null;
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
+                subBuilder = lock_.toBuilder();
+              }
+              lock_ = input.readMessage(ch.epfl.dedis.lib.proto.Personhood.RoPaSci.parser(), extensionRegistry);
+              if (subBuilder != null) {
+                subBuilder.mergeFrom(lock_);
+                lock_ = subBuilder.buildPartial();
+              }
+              bitField0_ |= 0x00000004;
               break;
             }
             default: {
@@ -3701,6 +3745,45 @@ public final class Personhood {
       return wipe_;
     }
 
+    public static final int LOCK_FIELD_NUMBER = 3;
+    private ch.epfl.dedis.lib.proto.Personhood.RoPaSci lock_;
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    public boolean hasLock() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    public ch.epfl.dedis.lib.proto.Personhood.RoPaSci getLock() {
+      return lock_ == null ? ch.epfl.dedis.lib.proto.Personhood.RoPaSci.getDefaultInstance() : lock_;
+    }
+    /**
+     * <pre>
+     * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+     * After 1 minute, the game is again released. If the given game is not available,
+     * another one will be presented, when available.
+     * </pre>
+     *
+     * <code>optional .personhood.RoPaSci lock = 3;</code>
+     */
+    public ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder getLockOrBuilder() {
+      return lock_ == null ? ch.epfl.dedis.lib.proto.Personhood.RoPaSci.getDefaultInstance() : lock_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -3710,6 +3793,12 @@ public final class Personhood {
 
       if (hasNewropasci()) {
         if (!getNewropasci().isInitialized()) {
+          memoizedIsInitialized = 0;
+          return false;
+        }
+      }
+      if (hasLock()) {
+        if (!getLock().isInitialized()) {
           memoizedIsInitialized = 0;
           return false;
         }
@@ -3727,6 +3816,9 @@ public final class Personhood {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeBool(2, wipe_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeMessage(3, getLock());
+      }
       unknownFields.writeTo(output);
     }
 
@@ -3743,6 +3835,10 @@ public final class Personhood {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBoolSize(2, wipe_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeMessageSize(3, getLock());
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -3770,6 +3866,11 @@ public final class Personhood {
         result = result && (getWipe()
             == other.getWipe());
       }
+      result = result && (hasLock() == other.hasLock());
+      if (hasLock()) {
+        result = result && getLock()
+            .equals(other.getLock());
+      }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -3789,6 +3890,10 @@ public final class Personhood {
         hash = (37 * hash) + WIPE_FIELD_NUMBER;
         hash = (53 * hash) + com.google.protobuf.Internal.hashBoolean(
             getWipe());
+      }
+      if (hasLock()) {
+        hash = (37 * hash) + LOCK_FIELD_NUMBER;
+        hash = (53 * hash) + getLock().hashCode();
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -3924,6 +4029,7 @@ public final class Personhood {
         if (com.google.protobuf.GeneratedMessageV3
                 .alwaysUseFieldBuilders) {
           getNewropasciFieldBuilder();
+          getLockFieldBuilder();
         }
       }
       @java.lang.Override
@@ -3937,6 +4043,12 @@ public final class Personhood {
         bitField0_ = (bitField0_ & ~0x00000001);
         wipe_ = false;
         bitField0_ = (bitField0_ & ~0x00000002);
+        if (lockBuilder_ == null) {
+          lock_ = null;
+        } else {
+          lockBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -3977,6 +4089,14 @@ public final class Personhood {
           to_bitField0_ |= 0x00000002;
         }
         result.wipe_ = wipe_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        if (lockBuilder_ == null) {
+          result.lock_ = lock_;
+        } else {
+          result.lock_ = lockBuilder_.build();
+        }
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -4032,6 +4152,9 @@ public final class Personhood {
         if (other.hasWipe()) {
           setWipe(other.getWipe());
         }
+        if (other.hasLock()) {
+          mergeLock(other.getLock());
+        }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
         return this;
@@ -4041,6 +4164,11 @@ public final class Personhood {
       public final boolean isInitialized() {
         if (hasNewropasci()) {
           if (!getNewropasci().isInitialized()) {
+            return false;
+          }
+        }
+        if (hasLock()) {
+          if (!getLock().isInitialized()) {
             return false;
           }
         }
@@ -4215,6 +4343,178 @@ public final class Personhood {
         wipe_ = false;
         onChanged();
         return this;
+      }
+
+      private ch.epfl.dedis.lib.proto.Personhood.RoPaSci lock_ = null;
+      private com.google.protobuf.SingleFieldBuilderV3<
+          ch.epfl.dedis.lib.proto.Personhood.RoPaSci, ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder, ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder> lockBuilder_;
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public boolean hasLock() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public ch.epfl.dedis.lib.proto.Personhood.RoPaSci getLock() {
+        if (lockBuilder_ == null) {
+          return lock_ == null ? ch.epfl.dedis.lib.proto.Personhood.RoPaSci.getDefaultInstance() : lock_;
+        } else {
+          return lockBuilder_.getMessage();
+        }
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public Builder setLock(ch.epfl.dedis.lib.proto.Personhood.RoPaSci value) {
+        if (lockBuilder_ == null) {
+          if (value == null) {
+            throw new NullPointerException();
+          }
+          lock_ = value;
+          onChanged();
+        } else {
+          lockBuilder_.setMessage(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public Builder setLock(
+          ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder builderForValue) {
+        if (lockBuilder_ == null) {
+          lock_ = builderForValue.build();
+          onChanged();
+        } else {
+          lockBuilder_.setMessage(builderForValue.build());
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public Builder mergeLock(ch.epfl.dedis.lib.proto.Personhood.RoPaSci value) {
+        if (lockBuilder_ == null) {
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
+              lock_ != null &&
+              lock_ != ch.epfl.dedis.lib.proto.Personhood.RoPaSci.getDefaultInstance()) {
+            lock_ =
+              ch.epfl.dedis.lib.proto.Personhood.RoPaSci.newBuilder(lock_).mergeFrom(value).buildPartial();
+          } else {
+            lock_ = value;
+          }
+          onChanged();
+        } else {
+          lockBuilder_.mergeFrom(value);
+        }
+        bitField0_ |= 0x00000004;
+        return this;
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public Builder clearLock() {
+        if (lockBuilder_ == null) {
+          lock_ = null;
+          onChanged();
+        } else {
+          lockBuilder_.clear();
+        }
+        bitField0_ = (bitField0_ & ~0x00000004);
+        return this;
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder getLockBuilder() {
+        bitField0_ |= 0x00000004;
+        onChanged();
+        return getLockFieldBuilder().getBuilder();
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      public ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder getLockOrBuilder() {
+        if (lockBuilder_ != null) {
+          return lockBuilder_.getMessageOrBuilder();
+        } else {
+          return lock_ == null ?
+              ch.epfl.dedis.lib.proto.Personhood.RoPaSci.getDefaultInstance() : lock_;
+        }
+      }
+      /**
+       * <pre>
+       * RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+       * After 1 minute, the game is again released. If the given game is not available,
+       * another one will be presented, when available.
+       * </pre>
+       *
+       * <code>optional .personhood.RoPaSci lock = 3;</code>
+       */
+      private com.google.protobuf.SingleFieldBuilderV3<
+          ch.epfl.dedis.lib.proto.Personhood.RoPaSci, ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder, ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder> 
+          getLockFieldBuilder() {
+        if (lockBuilder_ == null) {
+          lockBuilder_ = new com.google.protobuf.SingleFieldBuilderV3<
+              ch.epfl.dedis.lib.proto.Personhood.RoPaSci, ch.epfl.dedis.lib.proto.Personhood.RoPaSci.Builder, ch.epfl.dedis.lib.proto.Personhood.RoPaSciOrBuilder>(
+                  getLock(),
+                  getParentForChildren(),
+                  isClean());
+          lock_ = null;
+        }
+        return lockBuilder_;
       }
       @java.lang.Override
       public final Builder setUnknownFields(
@@ -5093,6 +5393,15 @@ public final class Personhood {
      * <code>required bytes ropasciid = 2;</code>
      */
     com.google.protobuf.ByteString getRopasciid();
+
+    /**
+     * <code>optional sint64 locked = 3;</code>
+     */
+    boolean hasLocked();
+    /**
+     * <code>optional sint64 locked = 3;</code>
+     */
+    long getLocked();
   }
   /**
    * <pre>
@@ -5113,6 +5422,7 @@ public final class Personhood {
     private RoPaSci() {
       byzcoinid_ = com.google.protobuf.ByteString.EMPTY;
       ropasciid_ = com.google.protobuf.ByteString.EMPTY;
+      locked_ = 0L;
     }
 
     @java.lang.Override
@@ -5147,6 +5457,11 @@ public final class Personhood {
             case 18: {
               bitField0_ |= 0x00000002;
               ropasciid_ = input.readBytes();
+              break;
+            }
+            case 24: {
+              bitField0_ |= 0x00000004;
+              locked_ = input.readSInt64();
               break;
             }
             default: {
@@ -5212,6 +5527,21 @@ public final class Personhood {
       return ropasciid_;
     }
 
+    public static final int LOCKED_FIELD_NUMBER = 3;
+    private long locked_;
+    /**
+     * <code>optional sint64 locked = 3;</code>
+     */
+    public boolean hasLocked() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>optional sint64 locked = 3;</code>
+     */
+    public long getLocked() {
+      return locked_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -5240,6 +5570,9 @@ public final class Personhood {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeBytes(2, ropasciid_);
       }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeSInt64(3, locked_);
+      }
       unknownFields.writeTo(output);
     }
 
@@ -5256,6 +5589,10 @@ public final class Personhood {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(2, ropasciid_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeSInt64Size(3, locked_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -5283,6 +5620,11 @@ public final class Personhood {
         result = result && getRopasciid()
             .equals(other.getRopasciid());
       }
+      result = result && (hasLocked() == other.hasLocked());
+      if (hasLocked()) {
+        result = result && (getLocked()
+            == other.getLocked());
+      }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -5301,6 +5643,11 @@ public final class Personhood {
       if (hasRopasciid()) {
         hash = (37 * hash) + ROPASCIID_FIELD_NUMBER;
         hash = (53 * hash) + getRopasciid().hashCode();
+      }
+      if (hasLocked()) {
+        hash = (37 * hash) + LOCKED_FIELD_NUMBER;
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
+            getLocked());
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -5443,6 +5790,8 @@ public final class Personhood {
         bitField0_ = (bitField0_ & ~0x00000001);
         ropasciid_ = com.google.protobuf.ByteString.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000002);
+        locked_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -5479,6 +5828,10 @@ public final class Personhood {
           to_bitField0_ |= 0x00000002;
         }
         result.ropasciid_ = ropasciid_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.locked_ = locked_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -5533,6 +5886,9 @@ public final class Personhood {
         }
         if (other.hasRopasciid()) {
           setRopasciid(other.getRopasciid());
+        }
+        if (other.hasLocked()) {
+          setLocked(other.getLocked());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -5636,6 +5992,38 @@ public final class Personhood {
       public Builder clearRopasciid() {
         bitField0_ = (bitField0_ & ~0x00000002);
         ropasciid_ = getDefaultInstance().getRopasciid();
+        onChanged();
+        return this;
+      }
+
+      private long locked_ ;
+      /**
+       * <code>optional sint64 locked = 3;</code>
+       */
+      public boolean hasLocked() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>optional sint64 locked = 3;</code>
+       */
+      public long getLocked() {
+        return locked_;
+      }
+      /**
+       * <code>optional sint64 locked = 3;</code>
+       */
+      public Builder setLocked(long value) {
+        bitField0_ |= 0x00000004;
+        locked_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>optional sint64 locked = 3;</code>
+       */
+      public Builder clearLocked() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        locked_ = 0L;
         onChanged();
         return this;
       }
@@ -31232,72 +31620,74 @@ public final class Personhood {
       "ListResponse\022\"\n\007parties\030\001 \003(\0132\021.personho" +
       "od.Party\"L\n\005Party\022\034\n\006roster\030\001 \002(\0132\014.onet" +
       ".Roster\022\021\n\tbyzcoinid\030\002 \002(\014\022\022\n\ninstanceid" +
-      "\030\003 \002(\014\"D\n\013RoPaSciList\022\'\n\nnewropasci\030\001 \001(" +
-      "\0132\023.personhood.RoPaSci\022\014\n\004wipe\030\002 \001(\010\"<\n\023" +
-      "RoPaSciListResponse\022%\n\010ropascis\030\001 \003(\0132\023." +
-      "personhood.RoPaSci\"/\n\007RoPaSci\022\021\n\tbyzcoin" +
-      "id\030\001 \002(\014\022\021\n\tropasciid\030\002 \002(\014\"\034\n\013StringRep" +
-      "ly\022\r\n\005reply\030\001 \002(\t\"\352\001\n\rRoPaSciStruct\022\023\n\013d" +
-      "escription\030\001 \002(\t\022\034\n\005stake\030\002 \002(\0132\r.byzcoi" +
-      "n.Coin\022\027\n\017firstplayerhash\030\003 \002(\014\022\023\n\013first" +
-      "player\030\004 \001(\021\022\024\n\014secondplayer\030\005 \001(\021\022\033\n\023se" +
-      "condplayeraccount\030\006 \001(\014\022\032\n\022firstplayerac" +
-      "count\030\007 \001(\014\022\024\n\014calypsowrite\030\010 \001(\014\022\023\n\013cal" +
-      "ypsoread\030\t \001(\014\"?\n\020CredentialStruct\022+\n\013cr" +
-      "edentials\030\001 \003(\0132\026.personhood.Credential\"" +
-      "E\n\nCredential\022\014\n\004name\030\001 \002(\t\022)\n\nattribute" +
-      "s\030\002 \003(\0132\025.personhood.Attribute\"(\n\tAttrib" +
-      "ute\022\014\n\004name\030\001 \002(\t\022\r\n\005value\030\002 \002(\014\"\230\002\n\rSpa" +
-      "wnerStruct\022\037\n\010costdarc\030\001 \002(\0132\r.byzcoin.C" +
-      "oin\022\037\n\010costcoin\030\002 \002(\0132\r.byzcoin.Coin\022%\n\016" +
-      "costcredential\030\003 \002(\0132\r.byzcoin.Coin\022 \n\tc" +
-      "ostparty\030\004 \002(\0132\r.byzcoin.Coin\022\023\n\013benefic" +
-      "iary\030\005 \002(\014\022\"\n\013costropasci\030\006 \001(\0132\r.byzcoi" +
-      "n.Coin\022!\n\ncostcwrite\030\007 \001(\0132\r.byzcoin.Coi" +
-      "n\022 \n\tcostcread\030\010 \001(\0132\r.byzcoin.Coin\"\370\001\n\016" +
-      "PopPartyStruct\022\r\n\005state\030\001 \002(\021\022\022\n\norganiz" +
-      "ers\030\002 \002(\021\022\025\n\rfinalizations\030\003 \003(\t\022(\n\013desc" +
-      "ription\030\004 \002(\0132\023.personhood.PopDesc\022(\n\tat" +
-      "tendees\030\005 \002(\0132\025.personhood.Attendees\022\"\n\006" +
-      "miners\030\006 \003(\0132\022.personhood.LRSTag\022\024\n\014mini" +
-      "ngreward\030\007 \002(\004\022\020\n\010previous\030\010 \001(\014\022\014\n\004next" +
-      "\030\t \001(\014\"L\n\007PopDesc\022\014\n\004name\030\001 \002(\t\022\017\n\007purpo" +
-      "se\030\002 \002(\t\022\020\n\010datetime\030\003 \002(\004\022\020\n\010location\030\004" +
-      " \002(\t\"]\n\016FinalStatement\022!\n\004desc\030\001 \001(\0132\023.p" +
-      "ersonhood.PopDesc\022(\n\tattendees\030\002 \002(\0132\025.p" +
-      "ersonhood.Attendees\"\031\n\tAttendees\022\014\n\004keys" +
-      "\030\001 \003(\014\"\025\n\006LRSTag\022\013\n\003tag\030\001 \002(\014\"\266\001\n\004Poll\022\021" +
-      "\n\tbyzcoinid\030\001 \002(\014\022\'\n\007newpoll\030\002 \001(\0132\026.per" +
-      "sonhood.PollStruct\022\"\n\004list\030\003 \001(\0132\024.perso" +
-      "nhood.PollList\022&\n\006answer\030\004 \001(\0132\026.personh" +
-      "ood.PollAnswer\022&\n\006delete\030\005 \001(\0132\026.personh" +
-      "ood.PollDelete\"Q\n\nPollDelete\022 \n\010identity" +
-      "\030\001 \002(\0132\016.darc.Identity\022\016\n\006pollid\030\002 \002(\014\022\021" +
-      "\n\tsignature\030\003 \002(\014\"\034\n\010PollList\022\020\n\010partyid" +
-      "s\030\001 \003(\014\"J\n\nPollAnswer\022\016\n\006pollid\030\001 \002(\014\022\016\n" +
-      "\006choice\030\002 \002(\021\022\013\n\003lrs\030\003 \002(\014\022\017\n\007partyid\030\004 " +
-      "\001(\014\"\215\001\n\nPollStruct\022\022\n\npersonhood\030\001 \002(\014\022\016" +
-      "\n\006pollid\030\002 \001(\014\022\r\n\005title\030\003 \002(\t\022\023\n\013descrip" +
-      "tion\030\004 \002(\t\022\017\n\007choices\030\005 \003(\t\022&\n\006chosen\030\006 " +
-      "\003(\0132\026.personhood.PollChoice\",\n\nPollChoic" +
-      "e\022\016\n\006choice\030\001 \002(\021\022\016\n\006lrstag\030\002 \002(\014\"5\n\014Pol" +
-      "lResponse\022%\n\005polls\030\001 \003(\0132\026.personhood.Po" +
-      "llStruct\"\016\n\014Capabilities\"D\n\024Capabilities" +
-      "Response\022,\n\014capabilities\030\001 \003(\0132\026.personh" +
-      "ood.Capability\"/\n\nCapability\022\020\n\010endpoint" +
-      "\030\001 \002(\t\022\017\n\007version\030\002 \002(\014\"\212\001\n\014UserLocation" +
-      "\022\021\n\tpublickey\030\001 \002(\014\022\025\n\rcredentialiid\030\002 \001" +
-      "(\014\0220\n\ncredential\030\003 \001(\0132\034.personhood.Cred" +
-      "entialStruct\022\020\n\010location\030\004 \001(\t\022\014\n\004time\030\005" +
-      " \002(\022\"F\n\006Meetup\022.\n\014userlocation\030\001 \001(\0132\030.p" +
-      "ersonhood.UserLocation\022\014\n\004wipe\030\002 \001(\010\"9\n\016" +
-      "MeetupResponse\022\'\n\005users\030\001 \003(\0132\030.personho" +
-      "od.UserLocation\";\n\tChallenge\022.\n\006update\030\001" +
-      " \001(\0132\036.personhood.ChallengeCandidate\"7\n\022" +
-      "ChallengeCandidate\022\022\n\ncredential\030\001 \002(\014\022\r" +
-      "\n\005score\030\002 \002(\021\">\n\016ChallengeReply\022,\n\004list\030" +
-      "\001 \003(\0132\036.personhood.ChallengeCandidateB%\n" +
-      "\027ch.epfl.dedis.lib.protoB\nPersonhood"
+      "\030\003 \002(\014\"g\n\013RoPaSciList\022\'\n\nnewropasci\030\001 \001(" +
+      "\0132\023.personhood.RoPaSci\022\014\n\004wipe\030\002 \001(\010\022!\n\004" +
+      "lock\030\003 \001(\0132\023.personhood.RoPaSci\"<\n\023RoPaS" +
+      "ciListResponse\022%\n\010ropascis\030\001 \003(\0132\023.perso" +
+      "nhood.RoPaSci\"?\n\007RoPaSci\022\021\n\tbyzcoinid\030\001 " +
+      "\002(\014\022\021\n\tropasciid\030\002 \002(\014\022\016\n\006locked\030\003 \001(\022\"\034" +
+      "\n\013StringReply\022\r\n\005reply\030\001 \002(\t\"\352\001\n\rRoPaSci" +
+      "Struct\022\023\n\013description\030\001 \002(\t\022\034\n\005stake\030\002 \002" +
+      "(\0132\r.byzcoin.Coin\022\027\n\017firstplayerhash\030\003 \002" +
+      "(\014\022\023\n\013firstplayer\030\004 \001(\021\022\024\n\014secondplayer\030" +
+      "\005 \001(\021\022\033\n\023secondplayeraccount\030\006 \001(\014\022\032\n\022fi" +
+      "rstplayeraccount\030\007 \001(\014\022\024\n\014calypsowrite\030\010" +
+      " \001(\014\022\023\n\013calypsoread\030\t \001(\014\"?\n\020CredentialS" +
+      "truct\022+\n\013credentials\030\001 \003(\0132\026.personhood." +
+      "Credential\"E\n\nCredential\022\014\n\004name\030\001 \002(\t\022)" +
+      "\n\nattributes\030\002 \003(\0132\025.personhood.Attribut" +
+      "e\"(\n\tAttribute\022\014\n\004name\030\001 \002(\t\022\r\n\005value\030\002 " +
+      "\002(\014\"\230\002\n\rSpawnerStruct\022\037\n\010costdarc\030\001 \002(\0132" +
+      "\r.byzcoin.Coin\022\037\n\010costcoin\030\002 \002(\0132\r.byzco" +
+      "in.Coin\022%\n\016costcredential\030\003 \002(\0132\r.byzcoi" +
+      "n.Coin\022 \n\tcostparty\030\004 \002(\0132\r.byzcoin.Coin" +
+      "\022\023\n\013beneficiary\030\005 \002(\014\022\"\n\013costropasci\030\006 \001" +
+      "(\0132\r.byzcoin.Coin\022!\n\ncostcwrite\030\007 \001(\0132\r." +
+      "byzcoin.Coin\022 \n\tcostcread\030\010 \001(\0132\r.byzcoi" +
+      "n.Coin\"\370\001\n\016PopPartyStruct\022\r\n\005state\030\001 \002(\021" +
+      "\022\022\n\norganizers\030\002 \002(\021\022\025\n\rfinalizations\030\003 " +
+      "\003(\t\022(\n\013description\030\004 \002(\0132\023.personhood.Po" +
+      "pDesc\022(\n\tattendees\030\005 \002(\0132\025.personhood.At" +
+      "tendees\022\"\n\006miners\030\006 \003(\0132\022.personhood.LRS" +
+      "Tag\022\024\n\014miningreward\030\007 \002(\004\022\020\n\010previous\030\010 " +
+      "\001(\014\022\014\n\004next\030\t \001(\014\"L\n\007PopDesc\022\014\n\004name\030\001 \002" +
+      "(\t\022\017\n\007purpose\030\002 \002(\t\022\020\n\010datetime\030\003 \002(\004\022\020\n" +
+      "\010location\030\004 \002(\t\"]\n\016FinalStatement\022!\n\004des" +
+      "c\030\001 \001(\0132\023.personhood.PopDesc\022(\n\tattendee" +
+      "s\030\002 \002(\0132\025.personhood.Attendees\"\031\n\tAttend" +
+      "ees\022\014\n\004keys\030\001 \003(\014\"\025\n\006LRSTag\022\013\n\003tag\030\001 \002(\014" +
+      "\"\266\001\n\004Poll\022\021\n\tbyzcoinid\030\001 \002(\014\022\'\n\007newpoll\030" +
+      "\002 \001(\0132\026.personhood.PollStruct\022\"\n\004list\030\003 " +
+      "\001(\0132\024.personhood.PollList\022&\n\006answer\030\004 \001(" +
+      "\0132\026.personhood.PollAnswer\022&\n\006delete\030\005 \001(" +
+      "\0132\026.personhood.PollDelete\"Q\n\nPollDelete\022" +
+      " \n\010identity\030\001 \002(\0132\016.darc.Identity\022\016\n\006pol" +
+      "lid\030\002 \002(\014\022\021\n\tsignature\030\003 \002(\014\"\034\n\010PollList" +
+      "\022\020\n\010partyids\030\001 \003(\014\"J\n\nPollAnswer\022\016\n\006poll" +
+      "id\030\001 \002(\014\022\016\n\006choice\030\002 \002(\021\022\013\n\003lrs\030\003 \002(\014\022\017\n" +
+      "\007partyid\030\004 \001(\014\"\215\001\n\nPollStruct\022\022\n\npersonh" +
+      "ood\030\001 \002(\014\022\016\n\006pollid\030\002 \001(\014\022\r\n\005title\030\003 \002(\t" +
+      "\022\023\n\013description\030\004 \002(\t\022\017\n\007choices\030\005 \003(\t\022&" +
+      "\n\006chosen\030\006 \003(\0132\026.personhood.PollChoice\"," +
+      "\n\nPollChoice\022\016\n\006choice\030\001 \002(\021\022\016\n\006lrstag\030\002" +
+      " \002(\014\"5\n\014PollResponse\022%\n\005polls\030\001 \003(\0132\026.pe" +
+      "rsonhood.PollStruct\"\016\n\014Capabilities\"D\n\024C" +
+      "apabilitiesResponse\022,\n\014capabilities\030\001 \003(" +
+      "\0132\026.personhood.Capability\"/\n\nCapability\022" +
+      "\020\n\010endpoint\030\001 \002(\t\022\017\n\007version\030\002 \002(\014\"\212\001\n\014U" +
+      "serLocation\022\021\n\tpublickey\030\001 \002(\014\022\025\n\rcreden" +
+      "tialiid\030\002 \001(\014\0220\n\ncredential\030\003 \001(\0132\034.pers" +
+      "onhood.CredentialStruct\022\020\n\010location\030\004 \001(" +
+      "\t\022\014\n\004time\030\005 \002(\022\"F\n\006Meetup\022.\n\014userlocatio" +
+      "n\030\001 \001(\0132\030.personhood.UserLocation\022\014\n\004wip" +
+      "e\030\002 \001(\010\"9\n\016MeetupResponse\022\'\n\005users\030\001 \003(\013" +
+      "2\030.personhood.UserLocation\";\n\tChallenge\022" +
+      ".\n\006update\030\001 \001(\0132\036.personhood.ChallengeCa" +
+      "ndidate\"7\n\022ChallengeCandidate\022\022\n\ncredent" +
+      "ial\030\001 \002(\014\022\r\n\005score\030\002 \002(\021\">\n\016ChallengeRep" +
+      "ly\022,\n\004list\030\001 \003(\0132\036.personhood.ChallengeC" +
+      "andidateB%\n\027ch.epfl.dedis.lib.protoB\nPer" +
+      "sonhood"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -31343,7 +31733,7 @@ public final class Personhood {
     internal_static_personhood_RoPaSciList_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_personhood_RoPaSciList_descriptor,
-        new java.lang.String[] { "Newropasci", "Wipe", });
+        new java.lang.String[] { "Newropasci", "Wipe", "Lock", });
     internal_static_personhood_RoPaSciListResponse_descriptor =
       getDescriptor().getMessageTypes().get(5);
     internal_static_personhood_RoPaSciListResponse_fieldAccessorTable = new
@@ -31355,7 +31745,7 @@ public final class Personhood {
     internal_static_personhood_RoPaSci_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_personhood_RoPaSci_descriptor,
-        new java.lang.String[] { "Byzcoinid", "Ropasciid", });
+        new java.lang.String[] { "Byzcoinid", "Ropasciid", "Locked", });
     internal_static_personhood_StringReply_descriptor =
       getDescriptor().getMessageTypes().get(7);
     internal_static_personhood_StringReply_fieldAccessorTable = new

@@ -228,7 +228,7 @@ func (s *Service) Poll(rq *Poll) (*PollResponse, error) {
 		for bcID, polls := range s.storage.Polls {
 			if bcID == string(rq.ByzCoinID) {
 				for i, poll := range polls.Polls {
-					if bytes.Compare(poll.PollID, rq.Delete.PollID) == 0{
+					if bytes.Compare(poll.PollID, rq.Delete.PollID) == 0 {
 						polls.Polls = append(polls.Polls[0:i], polls.Polls[i+1:]...)
 						break
 					}
@@ -276,6 +276,17 @@ func (s *Service) RoPaSciList(rq *RoPaSciList) (*RoPaSciListResponse, error) {
 	if rq.NewRoPaSci != nil {
 		s.storage.RoPaSci = append(s.storage.RoPaSci, rq.NewRoPaSci)
 	}
+	if rq.Lock != nil {
+		for _, rps := range s.storage.RoPaSci {
+			if rps.RoPaSciID.Equal(rq.Lock.RoPaSciID) {
+				if rps.Locked == 0 {
+					rps.Locked = time.Now().Unix()
+					return &RoPaSciListResponse{RoPaScis: []RoPaSci{*rps}}, nil
+				}
+			}
+		}
+		return nil, errors.New("couldn't lock this ropasci")
+	}
 	var roPaScis []RoPaSci
 	for i := 0; i < len(s.storage.RoPaSci); i++ {
 		rps := s.storage.RoPaSci[i]
@@ -307,7 +318,10 @@ func (s *Service) RoPaSciList(rq *RoPaSciList) (*RoPaSciListResponse, error) {
 			i--
 			continue
 		}
-		roPaScis = append(roPaScis, *rps)
+		if rps.Locked == 0 || time.Now().Sub(time.Unix(rps.Locked, 0)) > time.Minute {
+			rps.Locked = 0
+			roPaScis = append(roPaScis, *rps)
+		}
 	}
 	err := s.save()
 	if err != nil {

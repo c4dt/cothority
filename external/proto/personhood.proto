@@ -44,6 +44,10 @@ message Party {
 message RoPaSciList {
   optional RoPaSci newropasci = 1;
   optional bool wipe = 2;
+  // RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+  // After 1 minute, the game is again released. If the given game is not available,
+  // another one will be presented, when available.
+  optional RoPaSci lock = 3;
 }
 
 // RoPaSciListResponse returns a list of all known, unfinished RockPaperScissors
@@ -56,6 +60,7 @@ message RoPaSciListResponse {
 message RoPaSci {
   required bytes byzcoinid = 1;
   required bytes ropasciid = 2;
+  optional sint64 locked = 3;
 }
 
 // StringReply can be used by all calls that need a string to be returned

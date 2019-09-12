@@ -57,6 +57,10 @@ type Party struct {
 type RoPaSciList struct {
 	NewRoPaSci *RoPaSci
 	Wipe       *bool
+	// RoPaSciLock allows to ask to lock a ropasci-game and take 1 minute to reply.
+	// After 1 minute, the game is again released. If the given game is not available,
+	// another one will be presented, when available.
+	Lock *RoPaSci
 }
 
 // RoPaSciListResponse returns a list of all known, unfinished RockPaperScissors
@@ -69,6 +73,7 @@ type RoPaSciListResponse struct {
 type RoPaSci struct {
 	ByzcoinID skipchain.SkipBlockID
 	RoPaSciID byzcoin.InstanceID
+	Locked    int64 `protobuf:"opt"`
 }
 
 // StringReply can be used by all calls that need a string to be returned
