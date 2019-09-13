@@ -14,7 +14,7 @@ show_all="true"
 show_time="false"
 single=""
 
-while getopts "h?v:n:p:i:d:qftsc" opt; do
+while getopts "h?v:n:p:i:d:qftsca" opt; do
     case "$opt" in
     h|\?)
         echo "Allowed arguments:
@@ -52,6 +52,8 @@ while getopts "h?v:n:p:i:d:qftsc" opt; do
     s)  single="true"
         ;;
     c)  export DEBUG_COLOR=true
+        ;;
+    a)  export COTHORITY_ALLOW_INSECURE_ADMIN=1
         ;;
     esac
 done
