@@ -296,6 +296,7 @@ type Challenge struct {
 type ChallengeCandidate struct {
 	Credential byzcoin.InstanceID
 	Score      int
+	Signup     int64
 }
 
 // ChallengeReply is sent back to the client and holds a list of pairs of Credential/Score

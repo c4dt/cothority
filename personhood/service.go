@@ -402,7 +402,7 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
 	log.Lvlf2("Challenge: %+v", rq)
 	if rq.Update != nil {
-		s.storage.Challenge[string(rq.Update.Credential.Slice())] = rq.Update.Score
+		s.storage.Challenge[string(rq.Update.Credential.Slice())] = rq.Update
 		err := s.save()
 		if err != nil {
 			return nil, err
@@ -410,13 +410,13 @@ func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
 	}
 	reply := &ChallengeReply{}
 	reply.List = make([]ChallengeCandidate, 0, len(s.storage.Challenge))
-	for id, score := range s.storage.Challenge {
-		reply.List = append(reply.List,
-			ChallengeCandidate{byzcoin.NewInstanceID([]byte(id)), score})
+	for _, ch := range s.storage.Challenge {
+		reply.List = append(reply.List, *ch)
 	}
 	sort.Slice(reply.List, func(i, j int) bool {
 		return reply.List[i].Score > reply.List[j].Score
 	})
+	log.Print(reply)
 	return reply, nil
 }
 
@@ -463,7 +463,7 @@ func newService(c *onet.Context) (onet.Service, error) {
 		s.storage.Polls = make(map[string]*storagePolls)
 	}
 	if len(s.storage.Challenge) == 0 {
-		s.storage.Challenge = make(map[string]int)
+		s.storage.Challenge = make(map[string]*ChallengeCandidate)
 	}
 	return s, nil
 }

@@ -30030,6 +30030,15 @@ public final class Personhood {
      * <code>required sint32 score = 2;</code>
      */
     int getScore();
+
+    /**
+     * <code>required sint64 signup = 3;</code>
+     */
+    boolean hasSignup();
+    /**
+     * <code>required sint64 signup = 3;</code>
+     */
+    long getSignup();
   }
   /**
    * <pre>
@@ -30051,6 +30060,7 @@ public final class Personhood {
     private ChallengeCandidate() {
       credential_ = com.google.protobuf.ByteString.EMPTY;
       score_ = 0;
+      signup_ = 0L;
     }
 
     @java.lang.Override
@@ -30085,6 +30095,11 @@ public final class Personhood {
             case 16: {
               bitField0_ |= 0x00000002;
               score_ = input.readSInt32();
+              break;
+            }
+            case 24: {
+              bitField0_ |= 0x00000004;
+              signup_ = input.readSInt64();
               break;
             }
             default: {
@@ -30150,6 +30165,21 @@ public final class Personhood {
       return score_;
     }
 
+    public static final int SIGNUP_FIELD_NUMBER = 3;
+    private long signup_;
+    /**
+     * <code>required sint64 signup = 3;</code>
+     */
+    public boolean hasSignup() {
+      return ((bitField0_ & 0x00000004) == 0x00000004);
+    }
+    /**
+     * <code>required sint64 signup = 3;</code>
+     */
+    public long getSignup() {
+      return signup_;
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -30165,6 +30195,10 @@ public final class Personhood {
         memoizedIsInitialized = 0;
         return false;
       }
+      if (!hasSignup()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -30177,6 +30211,9 @@ public final class Personhood {
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         output.writeSInt32(2, score_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        output.writeSInt64(3, signup_);
       }
       unknownFields.writeTo(output);
     }
@@ -30194,6 +30231,10 @@ public final class Personhood {
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
           .computeSInt32Size(2, score_);
+      }
+      if (((bitField0_ & 0x00000004) == 0x00000004)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeSInt64Size(3, signup_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -30221,6 +30262,11 @@ public final class Personhood {
         result = result && (getScore()
             == other.getScore());
       }
+      result = result && (hasSignup() == other.hasSignup());
+      if (hasSignup()) {
+        result = result && (getSignup()
+            == other.getSignup());
+      }
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -30239,6 +30285,11 @@ public final class Personhood {
       if (hasScore()) {
         hash = (37 * hash) + SCORE_FIELD_NUMBER;
         hash = (53 * hash) + getScore();
+      }
+      if (hasSignup()) {
+        hash = (37 * hash) + SIGNUP_FIELD_NUMBER;
+        hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
+            getSignup());
       }
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
@@ -30382,6 +30433,8 @@ public final class Personhood {
         bitField0_ = (bitField0_ & ~0x00000001);
         score_ = 0;
         bitField0_ = (bitField0_ & ~0x00000002);
+        signup_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -30418,6 +30471,10 @@ public final class Personhood {
           to_bitField0_ |= 0x00000002;
         }
         result.score_ = score_;
+        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
+          to_bitField0_ |= 0x00000004;
+        }
+        result.signup_ = signup_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -30473,6 +30530,9 @@ public final class Personhood {
         if (other.hasScore()) {
           setScore(other.getScore());
         }
+        if (other.hasSignup()) {
+          setSignup(other.getSignup());
+        }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
         return this;
@@ -30484,6 +30544,9 @@ public final class Personhood {
           return false;
         }
         if (!hasScore()) {
+          return false;
+        }
+        if (!hasSignup()) {
           return false;
         }
         return true;
@@ -30572,6 +30635,38 @@ public final class Personhood {
       public Builder clearScore() {
         bitField0_ = (bitField0_ & ~0x00000002);
         score_ = 0;
+        onChanged();
+        return this;
+      }
+
+      private long signup_ ;
+      /**
+       * <code>required sint64 signup = 3;</code>
+       */
+      public boolean hasSignup() {
+        return ((bitField0_ & 0x00000004) == 0x00000004);
+      }
+      /**
+       * <code>required sint64 signup = 3;</code>
+       */
+      public long getSignup() {
+        return signup_;
+      }
+      /**
+       * <code>required sint64 signup = 3;</code>
+       */
+      public Builder setSignup(long value) {
+        bitField0_ |= 0x00000004;
+        signup_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required sint64 signup = 3;</code>
+       */
+      public Builder clearSignup() {
+        bitField0_ = (bitField0_ & ~0x00000004);
+        signup_ = 0L;
         onChanged();
         return this;
       }
@@ -31683,11 +31778,11 @@ public final class Personhood {
       "e\030\002 \001(\010\"9\n\016MeetupResponse\022\'\n\005users\030\001 \003(\013" +
       "2\030.personhood.UserLocation\";\n\tChallenge\022" +
       ".\n\006update\030\001 \001(\0132\036.personhood.ChallengeCa" +
-      "ndidate\"7\n\022ChallengeCandidate\022\022\n\ncredent" +
-      "ial\030\001 \002(\014\022\r\n\005score\030\002 \002(\021\">\n\016ChallengeRep" +
-      "ly\022,\n\004list\030\001 \003(\0132\036.personhood.ChallengeC" +
-      "andidateB%\n\027ch.epfl.dedis.lib.protoB\nPer" +
-      "sonhood"
+      "ndidate\"G\n\022ChallengeCandidate\022\022\n\ncredent" +
+      "ial\030\001 \002(\014\022\r\n\005score\030\002 \002(\021\022\016\n\006signup\030\003 \002(\022" +
+      "\">\n\016ChallengeReply\022,\n\004list\030\001 \003(\0132\036.perso" +
+      "nhood.ChallengeCandidateB%\n\027ch.epfl.dedi" +
+      "s.lib.protoB\nPersonhood"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -31901,7 +31996,7 @@ public final class Personhood {
     internal_static_personhood_ChallengeCandidate_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_personhood_ChallengeCandidate_descriptor,
-        new java.lang.String[] { "Credential", "Score", });
+        new java.lang.String[] { "Credential", "Score", "Signup", });
     internal_static_personhood_ChallengeReply_descriptor =
       getDescriptor().getMessageTypes().get(33);
     internal_static_personhood_ChallengeReply_fieldAccessorTable = new

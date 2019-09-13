@@ -283,6 +283,7 @@ message Challenge {
 message ChallengeCandidate {
   required bytes credential = 1;
   required sint32 score = 2;
+  required sint64 signup = 3;
 }
 
 // ChallengeReply is sent back to the client and holds a list of pairs of Credential/Score

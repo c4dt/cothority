@@ -47,10 +47,10 @@ func (s *Service) tryLoad() error {
 }
 
 type storage1 struct {
-	RoPaSci []*RoPaSci
-	Parties map[string]*Party
-	Polls   map[string]*storagePolls
-	Challenge map[string]int
+	RoPaSci   []*RoPaSci
+	Parties   map[string]*Party
+	Polls     map[string]*storagePolls
+	Challenge map[string]*ChallengeCandidate
 
 	sync.Mutex
 }
