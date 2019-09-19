@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"go.dedis.ch/cothority/v3/darc"
-	"sort"
 	"time"
 
 	"go.dedis.ch/cothority/v3/skipchain"
@@ -401,23 +400,24 @@ func (s *Service) PartyList(rq *PartyList) (*PartyListResponse, error) {
 // people and comparing their results.
 func (s *Service) Challenge(rq *Challenge) (*ChallengeReply, error) {
 	log.Lvlf2("Challenge: %+v", rq)
-	if rq.Update != nil {
-		s.storage.Challenge[string(rq.Update.Credential.Slice())] = rq.Update
-		err := s.save()
-		if err != nil {
-			return nil, err
-		}
-	}
-	reply := &ChallengeReply{}
-	reply.List = make([]ChallengeCandidate, 0, len(s.storage.Challenge))
-	for _, ch := range s.storage.Challenge {
-		reply.List = append(reply.List, *ch)
-	}
-	sort.Slice(reply.List, func(i, j int) bool {
-		return reply.List[i].Score > reply.List[j].Score
-	})
-	log.Print(reply)
-	return reply, nil
+	//if rq.Update != nil {
+	//	s.storage.Challenge[string(rq.Update.Credential.Slice())] = rq.Update
+	//	err := s.save()
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+	//reply := &ChallengeReply{}
+	//reply.List = make([]ChallengeCandidate, 0, len(s.storage.Challenge))
+	//for _, ch := range s.storage.Challenge {
+	//	reply.List = append(reply.List, *ch)
+	//}
+	//sort.Slice(reply.List, func(i, j int) bool {
+	//	return reply.List[i].Score > reply.List[j].Score
+	//})
+	//log.Print(reply)
+	//return reply, nil
+	return nil, nil
 }
 
 func (s *Service) byzcoinService() *byzcoin.Service {
@@ -462,8 +462,8 @@ func newService(c *onet.Context) (onet.Service, error) {
 	if len(s.storage.Polls) == 0 {
 		s.storage.Polls = make(map[string]*storagePolls)
 	}
-	if len(s.storage.Challenge) == 0 {
-		s.storage.Challenge = make(map[string]*ChallengeCandidate)
-	}
-	return s, nil
+	//if len(s.storage.Challenge) == 0 {
+	//	s.storage.Challenge = make(map[string]*ChallengeCandidate)
+	//}
+	return s, s.save()
 }
