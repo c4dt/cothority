@@ -1,6 +1,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7770"
+  Url = "http://127.0.0.1:7771"
   Suite = "Ed25519"
   Public = "741b3af1fa069b2b964102bae6bc707315f61f5564fae426c261f5b6ceda3590"
   Description = "Conode_1"
@@ -14,6 +15,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7772"
+  Url = "http://127.0.0.1:7773"
   Suite = "Ed25519"
   Public = "0edf287ed19b5b388092970c6a8c728bb8134b2a655012e1083cda9c23d43876"
   Description = "Conode_2"
@@ -27,6 +29,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7774"
+  Url = "http://127.0.0.1:7775"
   Suite = "Ed25519"
   Public = "185fe696e7929da03256c08de00e8209d1536a73f11b8044eb5b6034cdf1a29c"
   Description = "Conode_3"
@@ -40,6 +43,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7776"
+  Url = "http://127.0.0.1:7777"
   Suite = "Ed25519"
   Public = "81674b80ec5ed77a83538315b24dfbff8f8598839d2718831431ef5ceb341f79"
   Description = "Conode_4"
@@ -53,6 +57,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7778"
+  Url = "http://127.0.0.1:7779"
   Suite = "Ed25519"
   Public = "a659a7bfdfc9ed69bcfef3e66b4f42a91fd4d92096235a3b572d6040e293e537"
   Description = "Conode_5"
@@ -66,6 +71,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7780"
+  Url = "http://127.0.0.1:7781"
   Suite = "Ed25519"
   Public = "2f6da59af68e8fd7a1fd85688e96f69679e7d4fe1343108d46fb5c27e0e40e09"
   Description = "Conode_6"
@@ -79,6 +85,7 @@
 
 [[servers]]
   Address = "tls://127.0.0.1:7782"
+  Url = "http://127.0.0.1:7783"
   Suite = "Ed25519"
   Public = "cf2d787082547b96bc125bd6173e4ecedb88d40d7be66bec6a72cfcd75003446"
   Description = "Conode_7"

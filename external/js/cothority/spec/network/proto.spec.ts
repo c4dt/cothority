@@ -43,8 +43,7 @@ describe("Network Proto Tests", () => {
 
     it("should get a websocket address", () => {
         const srvid = new ServerIdentity({ address: "tls://127.0.0.1:5000", id: Buffer.from([]) });
-
-        expect(srvid.getWebSocketAddress()).toBe("ws://127.0.0.1:5001");
+        expect(srvid.getWebSocketAddress()).toBe("wss://127.0.0.1:5001");
 
         const str = `
         [[servers]]
@@ -61,8 +60,7 @@ describe("Network Proto Tests", () => {
             Suite = "bn256.adapter"
         `;
         const roster = Roster.fromTOML(str);
-
-        expect(roster.list[0].getWebSocketAddress()).toBe("ws://127.0.0.1:7771");
+        expect(roster.list[0].getWebSocketAddress()).toBe("wss://127.0.0.1:7771");
     });
 
     it("getWebSocketAddress should return the correct url if the 'url' field is not empty", () => {
@@ -72,22 +70,10 @@ describe("Network Proto Tests", () => {
         let expected = "ws://example.com/path";
         expect(result).toBe(expected);
 
-        url = "https://example.com:6000/path";
+        url = "https://example.com:6000/path/";
         srvid = new ServerIdentity({ address: "tls://127.0.0.1:5000", id: Buffer.from([]), url });
         result = srvid.getWebSocketAddress();
-        expected = "wss://example.com:6000/path";
-        expect(result).toBe(expected);
-
-        url = "https://example.com:3000/path/";
-        srvid = new ServerIdentity({ address: "tls://127.0.0.1:5000", id: Buffer.from([]), url });
-        result = srvid.getWebSocketAddress();
-        expected = "wss://example.com:3000/path";
-        expect(result).toBe(expected);
-
-        url = "https://example.com:3000/";
-        srvid = new ServerIdentity({ address: "tls://127.0.0.1:5000", id: Buffer.from([]), url });
-        result = srvid.getWebSocketAddress();
-        expected = "wss://example.com:3000";
+        expected = "wss://example.com:6000/path/";
         expect(result).toBe(expected);
 
         url = "tcp://example.com/path";

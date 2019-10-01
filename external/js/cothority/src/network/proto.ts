@@ -3,9 +3,9 @@ import { createHash } from "crypto";
 import { Message, Properties } from "protobufjs/light";
 import UUID from "pure-uuid";
 import toml from "toml";
+import URL from "url-parse";
 import { EMPTY_BUFFER, registerMessage } from "../protobuf";
 
-const BASE_URL_WS = "ws://";
 const BASE_URL_TLS = "tls://";
 const URL_PORT_SPLITTER = ":";
 const PORT_MIN = 0;
@@ -156,27 +156,6 @@ export class Roster extends Message<Roster> {
  * Identity of a conode
  */
 export class ServerIdentity extends Message<ServerIdentity> {
-
-    /**
-     * Converts an HTTP-S URL to a Wesocket URL. It converts 'http' to 'ws' and 'https' to 'wss'.
-     * Any other protocols are forbidden and will raise an error. It also removes any trailing '/'.
-     * Here are some examples:
-     *      http://example.com:77        => ws://example.com:77
-     *      https://example.com/path/    => wss:example.com/path
-     *      https://example.com:443/     => wss:example.com
-     *      tcp://127.0.0.1              => Error
-     * Note: It will NOT include the given port in the case it's the default one (for example 80 or 443).
-     * Note: In the case there are many slashes at the end of the url, it will only remove one.
-     * @param url   the given url field
-     * @returns a websocket url
-     */
-    static urlToWebsocket(url: string): string {
-        if (url.match(/^https?:\/\//) == null) {
-            throw new Error("The url field should use either 'http:' or 'https:'");
-        }
-        return url.replace(/^http(.*?)\/?$/, "ws$1");
-    }
-
     /**
      * @see README#Message classes
      */
@@ -204,24 +183,12 @@ export class ServerIdentity extends Message<ServerIdentity> {
         return false;
     }
 
-    /**
-     * Converts a TLS URL to a Wesocket URL and builds a complete URL with the path given as parameter.
-     * @param address   the server identity to take the urlRegistered from
-     * @param path      the path after the base urlRegistered
-     * @returns a websocket address
-     */
-    static addressToWebsocket(address: string, path: string = ""): string {
-        const [ip, portStr] = address.replace(BASE_URL_TLS, "").split(URL_PORT_SPLITTER);
-        const port = parseInt(portStr, 10) + 1;
-
-        return BASE_URL_WS + ip + URL_PORT_SPLITTER + port + path;
-    }
     readonly public: Buffer;
     readonly id: Buffer;
     readonly address: string;
     readonly description: string;
     readonly serviceIdentities: ServiceIdentity[];
-    readonly url: string;
+    readonly url: string | undefined;
     private _point: Point;
 
     constructor(properties?: Properties<ServerIdentity>) {
@@ -251,15 +218,28 @@ export class ServerIdentity extends Message<ServerIdentity> {
     }
 
     /**
-     * Returns websocket version of this.url if set, otherwise converts the server
-     * address to match the websocket format.
+     * Returns websocket URL to connect to this ServerIdentity.
      * @returns the websocket address
      */
     getWebSocketAddress(): string {
-        if (this.url) {
-            return ServerIdentity.urlToWebsocket(this.url);
+        if (this.url !== undefined && this.url !== "") {
+            const url = new URL(this.url, {});
+            // TODO why not supporting proto ws: & wss: ?
+            switch (url.protocol) {
+                case "http:": url.set("protocol", "ws:"); break;
+                case "https:": url.set("protocol", "wss:"); break;
+                default: throw new Error(`unknown url protocol: ${url.protocol}`);
+            }
+            return url.href;
         } else {
-            return ServerIdentity.addressToWebsocket(this.address);
+            const addr = new URL(this.address, {});
+            const port = parseInt(addr.port, 10);
+            if (isNaN(port)) {
+                throw new Error(`invalid address port: ${addr.port}`);
+            }
+            addr.set("port", `${port + 1}`);
+            addr.set("protocol", "wss:");
+            return addr.href;
         }
     }
 }
