@@ -1,11 +1,11 @@
-_: &language_go_1_11
-  name: "go 1.11"
-  language: go
-  go: "1.11.x"
 _: &language_go_1_12
   name: "go 1.12"
   language: go
   go: "1.12.x"
+_: &language_go_1_13
+  name: "go 1.13"
+  language: go
+  go: "1.13.x"
 _: &language_js
   language: node_js
   node_js: "lts/*"
@@ -15,8 +15,8 @@ _: &get_coding
 _: &gen_link_kyber
   pushd external/js/kyber && npm ci && npm run link && popd
 _: &get_go
-  - gimme 1.12.4
-  - . $HOME/.gimme/envs/go1.12.4.env
+  - gimme 1.12.10
+  - . $HOME/.gimme/envs/go1.12.10.env
 
 _: &stage_lint_go
   before_script: *get_coding
@@ -25,20 +25,15 @@ _: &stage_lint_go
     - GO111MODULE=on make test_{fmt,lint}
 _: &stage_build_go
   script:
-    - make -C conode bindist
-    - GO111MODULE=on go get ./...
+    - make -C conode bindist tooldist
     - GO111MODULE=on go build ./...
 _: &stage_test_go
   before_script: *get_coding
   script: GO111MODULE=on make test_goveralls
 _: &stage_deploy_npm
   <<: *language_js
-  script: 
-    - CHANGED_FILES=$(git diff --name-only $TRAVIS_COMMIT_RANGE)
-    - JS_COTHORITY_N=`echo "$CHANGED_FILES" | grep -E -c "^external/js/cothority/" || true`
-    - JS_KYBER_N=`echo "$CHANGED_FILES" | grep -E -c "^external/js/kyber/" || true`
   before_deploy: echo "//registry.npmjs.org/:_authToken=${DEPLOY_NPM_TOKEN}" > $HOME/.npmrc
-
+  script: skip  # default to `make test`
 
 dist: trusty
 
@@ -56,15 +51,13 @@ jobs:
       before_script: *get_coding
       script: make test_proto
     - <<: *stage_lint_go
-      <<: *language_go_1_11
-    - <<: *stage_lint_go
-      <<: *language_go_1_12
+      <<: *language_go_1_13
 
     - stage: build
       <<: *stage_build_go
-      <<: *language_go_1_11
-    - <<: *stage_build_go
       <<: *language_go_1_12
+    - <<: *stage_build_go
+      <<: *language_go_1_13
 
     - name: "js > kyber"
       <<: *language_js
@@ -82,10 +75,8 @@ jobs:
         - npm run build
 
     - stage: test
+      <<: *language_go_1_13
       <<: *stage_test_go
-      <<: *language_go_1_11
-    - <<: *stage_test_go
-      <<: *language_go_1_12
     - name: "java"
       language: java
       install: *get_go
@@ -116,7 +107,6 @@ jobs:
       deploy:
         on:
           branch: master
-          condition: $JS_KYBER_N != 0
         provider: script
         script: >-
           cd external/js/kyber &&
@@ -128,7 +118,6 @@ jobs:
       deploy:
         on:
           branch: master
-          condition: $JS_COTHORITY_N != 0
         provider: script
         script: >-
           cd external/js/kyber && npm ci && npm run link && cd ../../.. &&
