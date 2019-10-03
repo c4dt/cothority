@@ -32,29 +32,29 @@ environment](https://github.com/dedis/doc/tree/master/README.md).
 
 ## Versioning and Roadmap
 
-We started to work on a 6-monthly cycle, synched up with the semesters at EPFL. From
-March to August we keep changes on the master-branch non-API breaking. Master and the
-current version https://gopkg.in/dedis/cothority.v2 are kept in sync. In September,
-we allow API-breaking changes in master and only selectively update the stable branch.
-End of February we freeze the current development in a stable branch and start again a
-non-breaking period of 6 months.
+We use a yearly release cycle, with new releases arriving in February, in time
+for students to use a new stable release during the spring semester.
 
-The current master branch is stable till the end of August 2018. If you are
-starting new work with this repository, use gopkg.in/dedis/cothority.v2 instead.
-The source code for this stable branch is
-[here](https://github.com/dedis/cothority/tree/v2).
+We use semantic versioning, and Go modules to make it possible to develop
+from a specific version and know the exact dependencies, and know when
+you are about to opt-in to an API-breaking change (because the major version
+of one or more of your dependencies changes).
 
-During 2018, we hope to bring you the following new pieces:
-- Cross platform mobile application to interact with the pop service
-- ByzCoin implementation using key/value pair storage and protected by darcs
+We maintain a major version for 18 months.
 
-Other pieces we hope to achieve in 2018:
-- Distributed internet archival functionality
-- New status-website of the cothority
-- Catena integration for skipchains
+The current major version is v3. It was released in Feb 2019. It will receive
+security updates, and possibly backports of simple and essential features
+from the master branch until June 2020.
 
-And some projects are private for the moment, but we hope to make them public
-as soon as possible.
+The last major version was v2, which is end of life as of June 2019.
+
+As of Oct 2019, work is starting on v4. It will be released in Feb 2020, with
+an end of life in June 2021.
+
+As a general rule, the current and last versions of Go are tested and expected
+to work to compile Cothority. If you encounter problems with older versions of
+the Go toolchain, please report them via a Github issue and we will try to solve
+them on a best-effort basis.
 
 ### Release v3.1.0
 
@@ -240,42 +240,14 @@ Now you can run it by giving the definition of the dedis-cothority on the comman
 status -g dedis-cothority.toml
 ```
 
-## Collective Signing
-
-Another service available is fault-tolerant collective signing, or ftCoSi. It
-requests a collective signature from a set of conodes. The signature is created
-on a given input data. For installation, type:
-
-```
-go install ./blscosi/blscosi
-```
-
-Now you can create a file and have it signed by the cothority:
-
-```
-date > /tmp/my_file
-blscosi sign -g dedis-cothority.toml /tmp/my_file | tee sig.json
-```
-
-And later somebody can verify the signature is correct by running the following command:
-
-```
-blscosi verify -g dedis-cothority.toml --signature sig.json /tmp/my_file
-```
-
-If everything is correct, it should print
-
-```
-[+] OK: Signature is valid.
-```
-
 # Participating in the cothority
 
 There are different ways to participate in the cothority project. A first step
 is to simply test the different CLI applications in this repository and tell us
 what were your difficulties or what you would like to use them for.
 
-A next step is to set up your own conode and participate in the
+A next step is to set up your own conode and participate in consensus
+operations on skipchains or ledgers.
 
 ## Setting up your own conode
 

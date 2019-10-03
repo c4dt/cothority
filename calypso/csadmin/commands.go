@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/urfave/cli"
 	"go.dedis.ch/cothority/v3/calypso/csadmin/clicontracts"
-	"gopkg.in/urfave/cli.v1"
 )
 
 var cmds = cli.Commands{
@@ -145,15 +145,23 @@ var cmds = cli.Commands{
 							},
 							cli.StringFlag{
 								Name:  "secret",
-								Usage: "data to be encrypted, has limited space regarding the kyber.Suite used (29 bits for ed25519)",
+								Usage: "data to be encrypted, encoded as hexadecimal, has limited space regarding the kyber.Suite used (29 bytes for ed25519)",
 							},
 							cli.StringFlag{
-								Name:  "data",
-								Usage: "cleartext data that can be stored in the Write contract (optional). Is not used if --readin is provided.",
+								Name:  "data, d",
+								Usage: "data that should be encrypted with the secret. Use --extraData for cleartext data. Not used if --readData is provided.",
 							},
 							cli.BoolFlag{
-								Name:  "readin",
-								Usage: "if provided, the --data flag is not used and the data is read from STDIN",
+								Name:  "readData, rd",
+								Usage: "if provided, the --data flag is not used and the data is read from STDIN. Can NOT be used conjointly with --readExtra.",
+							},
+							cli.StringFlag{
+								Name:  "extraData, ed",
+								Usage: "additional data, for example unencrypted infos. Not used if --readExtra is provided.",
+							},
+							cli.BoolFlag{
+								Name:  "readExtra, re",
+								Usage: "if provided, the --extraData flag is not used and the extra data is read from STDIN. Can NOT be used conjointly with --readData.",
 							},
 							cli.StringFlag{
 								Name:  "key",

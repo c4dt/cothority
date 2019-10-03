@@ -565,6 +565,7 @@ func (s *Service) GetSignerCounters(req *GetSignerCounters) (*GetSignerCountersR
 	}
 	resp := GetSignerCountersResponse{
 		Counters: out,
+		Index:    uint64(st.GetIndex()),
 	}
 	return &resp, nil
 }
@@ -1318,6 +1319,15 @@ func (s *Service) catchupFromID(r *onet.Roster, scID skipchain.SkipBlockID, sbID
 	sb, err := cl.GetSingleBlock(r, sbID)
 	if err != nil {
 		return err
+	}
+
+	// If a genesis block is asked to be caught up, we need to store it
+	// before the normal procedure. We know from above that the chain
+	// is friendly.
+	//
+	// We don't return as the following steps will create the trie.
+	if scID.Equal(sbID) {
+		s.db().Store(sb)
 	}
 
 	// catch up the intermediate missing blocks
@@ -2139,7 +2149,8 @@ func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction, scID
 			if err2 != nil {
 				err = fmt.Errorf("%s - while getting value: %s", err, err2)
 			}
-			err = fmt.Errorf("%s Contract %s got Instruction %x and returned error: %s", s.ServerIdentity(), cid, instr.Hash(), err)
+			err = fmt.Errorf("%s Contract %s got %+v and"+
+				" returned error: %s", s.ServerIdentity(), cid, instr, err)
 			return
 		}
 		var counterScs StateChanges
@@ -2172,7 +2183,8 @@ func (s *Service) processOneTx(sst *stagingStateTrie, tx ClientTransaction, scID
 				var contractID string
 				_, _, contractID, _, err = sst.GetValues(instr.InstanceID.Slice())
 				if err != nil {
-					err = fmt.Errorf("%s couldn't get contractID from instruction %+v", s.ServerIdentity(), instr)
+					err = fmt.Errorf("%s couldn't get contractID from the "+
+						"following instruction:\n%+v", s.ServerIdentity(), instr)
 					return
 				}
 				err = fmt.Errorf("%s: contract %s %s", s.ServerIdentity(), contractID, reason)
