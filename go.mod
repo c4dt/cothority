@@ -20,12 +20,13 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/urfave/cli v1.22.0
-	go.dedis.ch/kyber/v3 v3.0.5
-	go.dedis.ch/onet/v3 v3.0.24
-	go.dedis.ch/protobuf v1.0.8
+	go.dedis.ch/kyber/v3 v3.0.6
+	go.dedis.ch/onet/v3 v3.0.25
+	go.dedis.ch/protobuf v1.0.9
 	go.etcd.io/bbolt v1.3.3
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20190912141932-bc967efca4b8
+	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/satori/go.uuid.v1 v1.2.0
 	gopkg.in/square/go-jose.v2 v2.3.1 // indirect
