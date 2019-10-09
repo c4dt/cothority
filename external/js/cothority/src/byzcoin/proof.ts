@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import _ from "lodash";
 import Long from "long";
 import { Message, Properties } from "protobufjs/light";
+import Log from "../log";
 import { registerMessage } from "../protobuf";
 import { SkipchainRPC } from "../skipchain";
 import { ForwardLink, SkipBlock } from "../skipchain/skipblock";
@@ -139,6 +140,9 @@ export default class Proof extends Message<Proof> {
      * @deprecated use verifyFrom for a complete verification
      */
     verify(id: InstanceID): Error {
+        // TODO: Re-enable check after making it faster on ios
+        Log.lvl3("Not verifying because it's too slow");
+        return;
         if (!this.latest.computeHash().equals(this.latest.hash)) {
             return new Error("invalid latest block");
         }

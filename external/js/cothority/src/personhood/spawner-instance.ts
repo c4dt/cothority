@@ -5,7 +5,6 @@ import ByzCoinRPC from "../byzcoin/byzcoin-rpc";
 import ClientTransaction, { Argument, Instruction } from "../byzcoin/client-transaction";
 import CoinInstance, { Coin } from "../byzcoin/contracts/coin-instance";
 import DarcInstance from "../byzcoin/contracts/darc-instance";
-import ValueInstance from "../byzcoin/contracts/value-instance";
 import Instance, { InstanceID } from "../byzcoin/instance";
 import { CalypsoReadInstance } from "../calypso";
 import { CalypsoWriteInstance, Write } from "../calypso/calypso-instance";
@@ -339,10 +338,10 @@ export default class SpawnerInstance extends Instance {
      * @returns a promise that resolves with the new instance
      */
     async spawnRoPaSci(params: ICreateRoPaSci): Promise<RoPaSciInstance> {
-        const {desc, coin, signers, stake, choice, fillup} = params;
+        const {desc, coin, signers, stake, choice, fillup, calypso} = params;
 
         if (fillup.length !== 31) {
-            throw new Error("need exactly 31 bytes for fillUp");
+            throw new Error("need exactly " + 31 + " bytes for fillUp");
         }
 
         const c = new Coin({name: coin.name, value: stake.add(this.struct.costRoPaSci.value)});
@@ -350,18 +349,30 @@ export default class SpawnerInstance extends Instance {
             throw new Error("account balance not high enough for that stake");
         }
 
+        const preHash = Buffer.alloc(32);
+        preHash.writeInt8(choice % 3, 0);
+        fillup.copy(preHash, 1);
         const fph = createHash("sha256");
-        fph.update(Buffer.from([choice % 3]));
-        fph.update(fillup);
+        fph.update(preHash);
         const rps = new RoPaSciStruct({
             description: desc,
             firstPlayer: -1,
+            firstPlayerAccount: calypso ? coin.id : null,
             firstPlayerHash: fph.digest(),
             secondPlayer: -1,
             secondPlayerAccount: Buffer.alloc(32),
             stake: c,
         });
 
+        const rpsArgs = [new Argument({name: "struct", value: rps.toBytes()})];
+        if (calypso) {
+            const wcH = createHash("sha256");
+            wcH.update(rps.firstPlayerHash);
+            const writeCommit = wcH.digest();
+            const w = await Write.createWrite(calypso.id, writeCommit, calypso.X, preHash.slice(0, 28));
+            const writeBuf = Write.encode(w).finish();
+            rpsArgs.push(new Argument({name: "secret", value: Buffer.from(writeBuf)}));
+        }
         const ctx = ClientTransaction.make(
             this.rpc.getProtocolVersion(),
             Instruction.createInvoke(
@@ -373,7 +384,7 @@ export default class SpawnerInstance extends Instance {
             Instruction.createSpawn(
                 this.id,
                 RoPaSciInstance.contractID,
-                [new Argument({name: "struct", value: rps.toBytes()})],
+                rpsArgs,
             ),
         );
         await ctx.updateCountersAndSign(this.rpc, [signers, []]);
@@ -440,54 +451,6 @@ export default class SpawnerInstance extends Instance {
 
         return CalypsoWriteInstance.fromByzcoin(this.rpc, ctx.instructions[1].deriveId(), 2);
     }
-
-    /**
-     * Creates all the necessary instruction to create a new value - either with a 0 balance, or with
-     * a given balance by the caller.
-     *
-     * @param coin where to take the coins to create the instance
-     * @param darcID the responsible darc for the new coin
-     * @param value the value to store in the instance
-     */
-    spawnValueInstructions(coin: CoinInstance, darcID: InstanceID, value: Buffer): Instruction[] {
-        const valueBuf = this.struct.costValue.value.toBytesLE();
-        return [
-            Instruction.createInvoke(
-                coin.id,
-                CoinInstance.contractID,
-                CoinInstance.commandFetch,
-                [new Argument({name: CoinInstance.argumentCoins, value: Buffer.from(valueBuf)})],
-            ),
-            Instruction.createSpawn(
-                this.id,
-                ValueInstance.contractID,
-                [
-                    new Argument({name: ValueInstance.argumentValue, value}),
-                ],
-            ),
-        ];
-    }
-
-    /**
-     * Create a value instance for a given darc
-     *
-     * @param coin      The coin instance to take the coins from
-     * @param signers   The signers for the transaction
-     * @param darcID    The darc responsible for this coin
-     * @param value     The value to store in the instance
-     * @returns a promise that resolves with the new coin instance
-     */
-    async spawnValue(coin: CoinInstance, signers: Signer[], darcID: InstanceID, value: Buffer):
-        Promise<ValueInstance> {
-        const ctx = ClientTransaction.make(
-            this.rpc.getProtocolVersion(),
-            ...this.spawnValueInstructions(coin, darcID, value),
-        );
-        await ctx.updateCountersAndSign(this.rpc, [signers, []]);
-        await this.rpc.sendTransactionAndWait(ctx);
-
-        return ValueInstance.fromByzcoin(this.rpc, ctx.instructions[1].deriveId(), 2);
-    }
 }
 
 /**
@@ -509,7 +472,6 @@ export class SpawnerStruct extends Message<SpawnerStruct> {
     readonly costRoPaSci: Coin;
     readonly costCWrite: Coin;
     readonly costCRead: Coin;
-    readonly costValue: Coin;
     readonly beneficiary: InstanceID;
 
     constructor(props?: Properties<SpawnerStruct>) {
@@ -578,29 +540,19 @@ export class SpawnerStruct extends Message<SpawnerStruct> {
                 this.costCWrite = value;
             },
         });
-        Object.defineProperty(this, "costvalue", {
-            get(): Coin {
-                return this.costValue;
-            },
-            set(value: Coin) {
-                this.costValue = value;
-            },
-        });
     }
 }
 
 /**
  * Fields of the costs of a spawner instance
  */
-export interface ICreateCost {
+interface ICreateCost {
     costCRead: Long;
     costCWrite: Long;
     costCoin: Long;
     costCredential: Long;
     costDarc: Long;
     costParty: Long;
-    costRoPaSci: Long;
-    costValue: Long;
 
     [k: string]: Long;
 }
@@ -628,6 +580,7 @@ interface ICreateRoPaSci {
     stake: Long;
     choice: number;
     fillup: Buffer;
+    calypso?: LongTermSecret;
 
     [k: string]: any;
 }
