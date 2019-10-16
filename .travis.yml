@@ -31,13 +31,18 @@ _: &stage_deploy_npm
   before_deploy: echo "//registry.npmjs.org/:_authToken=${DEPLOY_NPM_TOKEN}" > $HOME/.npmrc
   script: skip  # default to `make test`
 
-dist: trusty
+dist: xenial
 
 stages:
   - lint
   - build
   - test
   - deploy
+
+before_install:
+  - git clone http://github.com/c4dt/Coding -b remove-sh-coveralls
+  - sed s,travis-ci,travis-pro, Coding/bin/Makefile.base
+  - sed -i s,travis-ci,travis-pro, Coding/bin/Makefile.base
 
 jobs:
   include:
