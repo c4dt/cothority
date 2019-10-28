@@ -10,13 +10,13 @@ import (
 
 	"go.dedis.ch/onet/v3/log"
 
+	"github.com/urfave/cli"
 	"go.dedis.ch/cothority/v3"
 	"go.dedis.ch/cothority/v3/byzcoin"
 	"go.dedis.ch/cothority/v3/byzcoin/bcadmin/lib"
 	"go.dedis.ch/cothority/v3/calypso"
 	"go.dedis.ch/cothority/v3/darc"
 	"go.dedis.ch/protobuf"
-	"gopkg.in/urfave/cli.v1"
 )
 
 // WriteSpawn creates a new instance of a write contract. It expects a public
@@ -81,6 +81,10 @@ func WriteSpawn(c *cli.Context) error {
 	if secret == "" {
 		return errors.New("please provide secret with --secret")
 	}
+	secretBuf, err := hex.DecodeString(secret)
+	if err != nil {
+		return errors.New("failed to decode secret as hexadecimal: " + err.Error())
+	}
 
 	instidstr := c.String("instid")
 	if instidstr == "" {
@@ -109,8 +113,7 @@ func WriteSpawn(c *cli.Context) error {
 
 	reply := &calypso.WriteReply{}
 
-	write := calypso.NewWrite(cothority.Suite, instid, d.GetBaseID(), p,
-		[]byte(secret))
+	write := calypso.NewWrite(cothority.Suite, instid, d.GetBaseID(), p, secretBuf)
 	if write == nil {
 		return errors.New("got a nil write, this is due to a key that is " +
 			"too long to be embeded")

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"math/rand"
 	"os"
 	"sort"
@@ -18,24 +17,25 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/qantik/qrgo"
+	"github.com/urfave/cli"
 	"go.dedis.ch/cothority/v3"
 	"go.dedis.ch/cothority/v3/byzcoin"
-	"go.dedis.ch/cothority/v3/byzcoin/bcadmin/clicontracts"
 	"go.dedis.ch/cothority/v3/byzcoin/bcadmin/lib"
 	"go.dedis.ch/cothority/v3/byzcoin/contracts"
 	"go.dedis.ch/cothority/v3/darc"
 	"go.dedis.ch/cothority/v3/darc/expression"
+	_ "go.dedis.ch/cothority/v3/eventlog"
 	_ "go.dedis.ch/cothority/v3/personhood"
 	"go.dedis.ch/cothority/v3/skipchain"
-	"go.dedis.ch/kyber/v3/util/random"
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/app"
 	"go.dedis.ch/onet/v3/cfgpath"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/network"
 	"go.dedis.ch/protobuf"
-	cli "gopkg.in/urfave/cli.v1"
 )
 
 type chainFetcher func(si *network.ServerIdentity) ([]skipchain.SkipBlockID, error)
@@ -44,691 +44,6 @@ const errUnregisteredMessage = "The requested message hasn't been registered"
 
 func init() {
 	network.RegisterMessages(&darc.Darc{}, &darc.Identity{}, &darc.Signer{})
-}
-
-var cmds = cli.Commands{
-	{
-		Name:      "create",
-		Usage:     "create a ledger",
-		Aliases:   []string{"c"},
-		ArgsUsage: "[roster.toml]",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "roster, r",
-				Usage: "the roster of the cothority that will host the ledger",
-			},
-			cli.DurationFlag{
-				Name:  "interval, i",
-				Usage: "the block interval for this ledger",
-				Value: 5 * time.Second,
-			},
-		},
-		Action: create,
-	},
-
-	{
-		Name:        "link",
-		Usage:       "create a BC config file that sets the specified roster, darc and identity",
-		Description: "If no identity is provided, it will use an empty one. Same for the darc param. This allows one that has no private key to perform basic operations that do not require authentication.",
-		Aliases:     []string{"login"},
-		ArgsUsage:   "roster.toml [byzcoin id]",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "darc",
-				Usage: "the darc id to be saved (defaults to an empty darc)",
-			},
-			cli.StringFlag{
-				Name:  "identity, id",
-				Usage: "the identity to be saved (defaults to an empty identity)",
-			},
-		},
-		Action: link,
-	},
-
-	{
-		Name:      "latest",
-		Usage:     "show the latest block in the chain",
-		Aliases:   []string{"s"},
-		ArgsUsage: "[bc.cfg]",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "bc",
-				EnvVar: "BC",
-				Usage:  "the ByzCoin config to use",
-			},
-			cli.IntFlag{
-				Name:  "server",
-				Usage: "which server number from the roster to contact (default: -1 = random)",
-				Value: -1,
-			},
-			cli.BoolFlag{
-				Name:  "update",
-				Usage: "update the ByzCoin config file with the fetched roster",
-			},
-			cli.BoolFlag{
-				Name:  "roster",
-				Usage: "display the latest block's roster",
-			},
-			cli.BoolFlag{
-				Name:  "header",
-				Usage: "display the latest header",
-			},
-		},
-		Action: latest,
-	},
-
-	{
-		Name:    "debug",
-		Usage:   "interact with byzcoin for debugging",
-		Aliases: []string{"d"},
-		Subcommands: cli.Commands{
-			{
-				Name:      "replay",
-				Usage:     "Replay a chain and check the global state is consistent",
-				Action:    debugReplay,
-				ArgsUsage: "URL",
-			},
-			{
-				Name:   "list",
-				Usage:  "Lists all byzcoin instances",
-				Action: debugList,
-				Flags: []cli.Flag{
-					cli.BoolFlag{
-						Name:  "verbose, v",
-						Usage: "print more information of the instances",
-					},
-				},
-				ArgsUsage: "(ip:port | group.toml)",
-			},
-			{
-				Name:  "dump",
-				Usage: "dumps a given byzcoin instance",
-				Flags: []cli.Flag{
-					cli.BoolFlag{
-						Name:  "verbose, v",
-						Usage: "print more information of the instances",
-					},
-				},
-				Action:    debugDump,
-				ArgsUsage: "ip:port byzcoin-id",
-			},
-			{
-				Name:      "remove",
-				Usage:     "removes a given byzcoin instance",
-				Action:    debugRemove,
-				ArgsUsage: "private.toml byzcoin-id",
-			},
-			{
-				Name:      "counters",
-				Usage:     "shows the counter-state in all nodes",
-				Action:    debugCounters,
-				ArgsUsage: "bc.cfg key-file",
-			},
-		},
-	},
-
-	{
-		Name:      "mint",
-		Usage:     "mint coins on account",
-		ArgsUsage: "bc-xxx.cfg key-xxx.cfg public-key #coins",
-		Action:    mint,
-	},
-
-	{
-		Name:    "roster",
-		Usage:   "change the roster of the ByzCoin",
-		Aliases: []string{"r"},
-		Subcommands: cli.Commands{
-			{
-				Name:      "add",
-				ArgsUsage: "bc-xxx.cfg key-xxx.cfg public.toml",
-				Usage:     "Add a new node to the roster",
-				Action:    rosterAdd,
-			},
-			{
-				Name:      "del",
-				ArgsUsage: "bc-xxx.cfg key-xxx.cfg public.toml",
-				Usage:     "Remove a node from the roster",
-				Action:    rosterDel,
-			},
-			{
-				Name:      "leader",
-				ArgsUsage: "bc-xxx.cfg key-xxx.cfg public.toml",
-				Usage:     "Set a specific node to be the leader",
-				Action:    rosterLeader,
-			},
-		},
-	},
-
-	{
-		Name:      "config",
-		Usage:     "update the config",
-		ArgsUsage: "bc-xxx.cfg key-xxx.cfg",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "interval",
-				Usage: "change the interval",
-			},
-			cli.IntFlag{
-				Name:  "blockSize",
-				Usage: "adjust the maximum block size",
-			},
-		},
-		Action: config,
-	},
-
-	{
-		Name:    "key",
-		Usage:   "generates a new keypair and prints the public key in the stdout",
-		Aliases: []string{"k"},
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "save",
-				Usage: "file in which the user wants to save the public key instead of printing it",
-			},
-			cli.StringFlag{
-				Name:  "print",
-				Usage: "print the private and public key",
-			},
-		},
-		Action: key,
-	},
-
-	{
-		Name:    "darc",
-		Usage:   "tool used to manage darcs",
-		Aliases: []string{"d"},
-		Subcommands: cli.Commands{
-			{
-				Name:   "show",
-				Usage:  "Show a DARC",
-				Action: darcShow,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:   "bc",
-						EnvVar: "BC",
-						Usage:  "the ByzCoin config to use (required)",
-					},
-					cli.StringFlag{
-						Name:  "darc",
-						Usage: "the darc to show (admin darc by default)",
-					},
-				},
-			},
-			{
-				Name:   "cdesc",
-				Usage:  "Edit the description of a DARC",
-				Action: darcCdesc,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:   "bc",
-						EnvVar: "BC",
-						Usage:  "the ByzCoin config to use (required)",
-					},
-					cli.StringFlag{
-						Name:  "darc",
-						Usage: "the id of the darc to edit (config admin darc by default)",
-					},
-					cli.StringFlag{
-						Name:  "desc",
-						Usage: "the new description of the darc (required)",
-					},
-				},
-			},
-			{
-				Name:   "add",
-				Usage:  "Add a new DARC with default rules.",
-				Action: darcAdd,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:   "bc",
-						EnvVar: "BC",
-						Usage:  "the ByzCoin config to use (required)",
-					},
-					cli.StringFlag{
-						Name:  "sign, signer",
-						Usage: "public key which will sign the DARC spawn request (default: the ledger admin identity)",
-					},
-					cli.StringFlag{
-						Name:  "darc",
-						Usage: "DARC with the right to create a new DARC (default is the admin DARC)",
-					},
-					cli.StringSliceFlag{
-						Name:  "identity, id",
-						Usage: "an identity, multiple use of this param is allowed. If empty it will create a new identity. Each provided identity is checked by the evaluation parser.",
-					},
-					cli.BoolFlag{
-						Name:  "unrestricted",
-						Usage: "add the invoke:evolve_unrestricted rule",
-					},
-					cli.BoolFlag{
-						Name:  "deferred",
-						Usage: "adds rules related to deferred contract: spawn:deferred, invoke:deferred.addProof, invoke:deferred.execProposedTx",
-					},
-					cli.StringFlag{
-						Name:  "out_id",
-						Usage: "output file for the darc id (optional)",
-					},
-					cli.StringFlag{
-						Name:  "out_key",
-						Usage: "output file for the darc key (optional)",
-					},
-					cli.StringFlag{
-						Name:  "desc",
-						Usage: "the description for the new DARC (default: random)",
-					},
-				},
-			},
-			{
-				Name:   "prule",
-				Usage:  "print rule. Will print the rule given identities and a minimum to have M out of N rule",
-				Action: darcPrintRule,
-				Flags: []cli.Flag{
-					cli.StringSliceFlag{
-						Name:  "identity, id",
-						Usage: "an identity, multiple use of this param is allowed. If empty it will create a new identity. Each provided identity is checked by the evaluation parser.",
-					},
-					cli.UintFlag{
-						Name:  "minimum, M",
-						Usage: "if this flag is set, the rule is computed to be \"M out of N\" identities. Otherwise it uses ANDs",
-					},
-				},
-			},
-			{
-				Name:   "rule",
-				Usage:  "Edit DARC rules.",
-				Action: darcRule,
-				Flags: []cli.Flag{
-					cli.StringFlag{
-						Name:   "bc",
-						EnvVar: "BC",
-						Usage:  "the ByzCoin config to use (required)",
-					},
-					cli.StringFlag{
-						Name:  "darc",
-						Usage: "the DARC to update (default is the admin DARC)",
-					},
-					cli.StringFlag{
-						Name:  "sign",
-						Usage: "public key of the signing entity (default is the admin public key)",
-					},
-					cli.StringFlag{
-						Name:  "rule",
-						Usage: "the rule to be added, updated or deleted",
-					},
-					cli.StringSliceFlag{
-						Name:  "identity, id",
-						Usage: "the identity of the signer who will be allowed to use the rule. Multiple use of this param is allowed. Each identity is checked by the evaluation parser.",
-					},
-					cli.UintFlag{
-						Name:  "minimum, M",
-						Usage: "if this flag is set, the rule is computed to be \"M out of N\" identities. Otherwise it uses ANDs",
-					},
-					cli.BoolFlag{
-						Name:  "replace",
-						Usage: "if this rule already exists, replace it with this new one",
-					},
-					cli.BoolFlag{
-						Name:  "delete",
-						Usage: "delete the rule",
-					},
-				},
-			},
-		},
-	},
-
-	{
-		Name:    "qr",
-		Usage:   "generates a QRCode containing the description of the BC Config",
-		Aliases: []string{"qrcode"},
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "bc",
-				EnvVar: "BC",
-				Usage:  "the ByzCoin config to use (required)",
-			},
-			cli.BoolFlag{
-				Name:  "admin",
-				Usage: "If specified, the QR Code will contain the admin keypair",
-			},
-		},
-		Action: qrcode,
-	},
-
-	{
-		Name:  "info",
-		Usage: "displays infos about the BC config",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:   "bc",
-				EnvVar: "BC",
-				Usage:  "the ByzCoin config to use (required)",
-			},
-		},
-		Action: getInfo,
-	},
-
-	{
-		Name: "contract",
-		// Use space instead of tabs for correct formatting
-		Usage: "Provides cli interface for contracts",
-		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name:  "export, x",
-				Usage: "redirects the transaction to stdout",
-			},
-		},
-		// UsageText should be used instead, but its not working:
-		// see https://github.com/urfave/cli/issues/592
-		Description: fmt.Sprint(`
-   bcadmin [--export] contract CONTRACT { 
-                               spawn  --bc <byzcoin config> 
-                                      [--<arg name> <arg value>, ...]
-                                      [--darc <darc id>] 
-                                      [--sign <pub key>],
-                               invoke <command>
-                                      --bc <byzcoin config>
-                                      --instid, i <instance ID>
-                                      [--<arg name> <arg value>, ...]
-                                      [--darc <darc id>] 
-                                      [--sign <pub key>],
-                               get    --bc <byzcoin config>
-                                      --instid, i <instance ID>,
-                               delete --bc <byzcoin config>
-                                      --instid, i <instance ID>
-                                      [--darc <darc id>] 
-                                      [--sign <pub key>]     
-                             }
-   CONTRAT   {value,deferred,config}`),
-		Subcommands: cli.Commands{
-			{
-				Name:  "value",
-				Usage: "Manipulate a value contract",
-				Subcommands: cli.Commands{
-					{
-						Name:   "spawn",
-						Usage:  "spawn a value contract",
-						Action: clicontracts.ValueSpawn,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "value",
-								Usage: "the value to save",
-							},
-							cli.StringFlag{
-								Name:  "darc",
-								Usage: "DARC with the right to spawn a value contract (default is the admin DARC)",
-							},
-							cli.StringFlag{
-								Name:  "sign",
-								Usage: "public key of the signing entity (default is the admin public key)",
-							},
-						},
-					},
-					{
-						Name:  "invoke",
-						Usage: "invoke a value contract",
-						Subcommands: cli.Commands{
-							{
-								Name:   "update",
-								Usage:  "update the value of a value contract",
-								Action: clicontracts.ValueInvokeUpdate,
-								Flags: []cli.Flag{
-									cli.StringFlag{
-										Name:   "bc",
-										EnvVar: "BC",
-										Usage:  "the ByzCoin config to use (required)",
-									},
-									cli.StringFlag{
-										Name:  "value",
-										Usage: "the value to save",
-									},
-									cli.StringFlag{
-										Name:  "instid, i",
-										Usage: "the instance ID of the value contract",
-									},
-									cli.StringFlag{
-										Name:  "darc",
-										Usage: "DARC with the right to invoke.update a value contract (default is the admin DARC)",
-									},
-									cli.StringFlag{
-										Name:  "sign",
-										Usage: "public key of the signing entity (default is the admin public key)",
-									},
-								},
-							},
-						},
-					},
-					{
-						Name:   "get",
-						Usage:  "if the proof matches, get the content of the given value instance ID",
-						Action: clicontracts.ValueGet,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "instid, i",
-								Usage: "the instance id (required)",
-							},
-						},
-					},
-
-					{
-						Name:   "delete",
-						Usage:  "delete a value contract",
-						Action: clicontracts.ValueDelete,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "instid, i",
-								Usage: "the instance ID of the value contract",
-							},
-							cli.StringFlag{
-								Name:  "darc",
-								Usage: "DARC with the right to invoke.update a value contract (default is the admin DARC)",
-							},
-							cli.StringFlag{
-								Name:  "sign",
-								Usage: "public key of the signing entity (default is the admin public key)",
-							},
-						},
-					},
-				},
-			},
-			{
-				Name:  "deferred",
-				Usage: "Manipulate a deferred contract",
-				Subcommands: cli.Commands{
-					{
-						Name:   "spawn",
-						Usage:  "spawn a deferred contract with the proposed transaction in stdin",
-						Action: clicontracts.DeferredSpawn,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "darc",
-								Usage: "DARC with the right to spawn a deferred contract (default is the admin DARC)",
-							},
-							cli.StringFlag{
-								Name:  "sign",
-								Usage: "public key of the signing entity (default is the admin public key)",
-							},
-						},
-					},
-					{
-						Name:  "invoke",
-						Usage: "invoke on a deferred contract ",
-						Subcommands: cli.Commands{
-							{
-								Name:   "addProof",
-								Usage:  "adds a signature and an identity on an instruction of the proposed transaction",
-								Action: clicontracts.DeferredInvokeAddProof,
-								Flags: []cli.Flag{
-									cli.StringFlag{
-										Name:   "bc",
-										EnvVar: "BC",
-										Usage:  "the ByzCoin config to use (required)",
-									},
-									cli.UintFlag{
-										Name:  "instrIdx",
-										Usage: "the instruction index of the transaction (starts from 0) (default is 0)",
-									},
-									cli.StringFlag{
-										Name:  "hash",
-										Usage: "the instruction hash that will be signed",
-									},
-									cli.StringFlag{
-										Name:  "instid, i",
-										Usage: "the instance ID of the deferred contract",
-									},
-									cli.StringFlag{
-										Name:  "darc",
-										Usage: "DARC with the right to invoke.addProof a deferred contract (default is the admin DARC)",
-									},
-									cli.StringFlag{
-										Name:  "sign",
-										Usage: "public key of the signing entity (default is the admin public key)",
-									},
-								},
-							},
-							{
-								Name:   "execProposedTx",
-								Usage:  "executes the proposed transaction if the instructions are correctly signed",
-								Action: clicontracts.ExecProposedTx,
-								Flags: []cli.Flag{
-									cli.StringFlag{
-										Name:   "bc",
-										EnvVar: "BC",
-										Usage:  "the ByzCoin config to use (required)",
-									},
-									cli.StringFlag{
-										Name:  "instid, i",
-										Usage: "the instance ID of the deferred contract",
-									},
-									cli.StringFlag{
-										Name:  "darc",
-										Usage: "DARC with the right to invoke.execProposedTx a deferred contract (default is the admin DARC)",
-									},
-									cli.StringFlag{
-										Name:  "sign",
-										Usage: "public key of the signing entity (default is the admin public key)",
-									},
-								},
-							},
-						},
-					},
-					{
-						Name:   "get",
-						Usage:  "if the proof matches, get the content of the given deferred instance ID",
-						Action: clicontracts.DeferredGet,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "instid, i",
-								Usage: "the instance id (required)",
-							},
-						},
-					},
-
-					{
-						Name:   "delete",
-						Usage:  "delete a deferred contract",
-						Action: clicontracts.DeferredDelete,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-							cli.StringFlag{
-								Name:  "instid, i",
-								Usage: "the instance ID of the value contract",
-							},
-							cli.StringFlag{
-								Name:  "darc",
-								Usage: "DARC with the right to invoke.update a value contract (default is the admin DARC)",
-							},
-							cli.StringFlag{
-								Name:  "sign",
-								Usage: "public key of the signing entity (default is the admin public key)",
-							},
-						},
-					},
-				},
-			},
-			{
-				Name:  "config",
-				Usage: "Manipulate a config contract",
-				Subcommands: cli.Commands{
-					{
-						Name:  "invoke",
-						Usage: "invoke on a config contract ",
-						Subcommands: cli.Commands{
-							{
-								Name:   "updateConfig",
-								Usage:  "changes the roster's leader",
-								Action: clicontracts.ConfigInvokeUpdateConfig,
-								Flags: []cli.Flag{
-									cli.StringFlag{
-										Name:   "bc",
-										EnvVar: "BC",
-										Usage:  "the ByzCoin config to use (required)",
-									},
-									cli.StringFlag{
-										Name:  "sign",
-										Usage: "public key of the signing entity (default is the admin public key)",
-									},
-									cli.StringFlag{
-										Name:  "blockInterval",
-										Usage: "blockInterval, for example 2s (optional)",
-									},
-									cli.IntFlag{
-										Name:  "maxBlockSize",
-										Usage: "maxBlockSize (optional)",
-									},
-									cli.StringFlag{
-										Name:  "darcContractIDs",
-										Usage: "darcContractIDs separated by comas (optional)",
-									},
-								},
-							},
-						},
-					},
-					{
-						Name:   "get",
-						Usage:  "displays the latest chain config",
-						Action: clicontracts.ConfigGet,
-						Flags: []cli.Flag{
-							cli.StringFlag{
-								Name:   "bc",
-								EnvVar: "BC",
-								Usage:  "the ByzCoin config to use (required)",
-							},
-						},
-					},
-				},
-			},
-		},
-	},
 }
 
 var cliApp = cli.NewApp()
@@ -742,7 +57,7 @@ func init() {
 	cliApp.Name = lib.BcaName
 	cliApp.Usage = "Create ByzCoin ledgers and grant access to them."
 	cliApp.Version = gitTag
-	cliApp.Commands = cmds
+	cliApp.Commands = cmds // stored in "commands.go"
 	cliApp.Flags = []cli.Flag{
 		cli.IntFlag{
 			Name:  "debug, d",
@@ -772,7 +87,7 @@ func main() {
 	rand.Seed(time.Now().Unix())
 	err := cliApp.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("error: %+v", err)
 	}
 	return
 }
@@ -888,7 +203,7 @@ func link(c *cli.Context) error {
 				cc, err = cl.GetChainConfig()
 				if err != nil {
 					cl = nil
-					log.Warnf("Could not get chain config from %v: %v\n", si, err)
+					log.Warnf("Could not get chain config from %v: %+v\n", si, err)
 					continue
 				}
 				cl.Roster = cc.Roster
@@ -1088,7 +403,7 @@ func fmtRoster(r *onet.Roster) string {
 	var roster []string
 	for _, s := range r.List {
 		if s.URL != "" {
-			roster = append(roster, fmt.Sprintf("%v (url: %v)", string(s.Address), s.URL))
+			roster = append(roster, fmt.Sprintf("%v (url: %+v)", string(s.Address), s.URL))
 		} else {
 			roster = append(roster, string(s.Address))
 		}
@@ -1131,6 +446,8 @@ func getBcKey(c *cli.Context) (cfg lib.Config, cl *byzcoin.Client, signer *darc.
 		err = errors.New("couldn't decode chainConfig: " + err.Error())
 		return
 	}
+	cl.Roster = chainCfg.Roster
+
 	return
 }
 
@@ -1153,7 +470,7 @@ func getBcKeyPub(c *cli.Context) (cfg lib.Config, cl *byzcoin.Client, signer *da
 	defer f.Close()
 	group, err := app.ReadGroupDescToml(f)
 	if err != nil {
-		err = fmt.Errorf("couldn't open %v: %v", fn, err.Error())
+		err = fmt.Errorf("couldn't open %v: %+v", fn, err.Error())
 		return
 	}
 	if len(group.Roster.List) != 1 {
@@ -1531,75 +848,6 @@ func darcShow(c *cli.Context) error {
 	return err
 }
 
-func debugReplay(c *cli.Context) error {
-	if c.NArg() < 1 {
-		return errors.New("please give the following arguments: url [bcID]")
-	}
-	if c.NArg() == 1 {
-		err := debugList(c)
-		if err != nil {
-			return err
-		}
-
-		log.Info("Please provide one of the following byzcoin ID as the second argument")
-		return nil
-	}
-
-	r := &onet.Roster{List: []*network.ServerIdentity{{
-		URL: c.Args().First(),
-		// valid server identity must have a public so we create a fake one
-		// as we are only interested in the URL.
-		Public: cothority.Suite.Point().Base(),
-	}}}
-	if r == nil {
-		return errors.New("couldn't create roster")
-	}
-	bcID, err := hex.DecodeString(c.Args().Get(1))
-	if err != nil {
-		return err
-	}
-
-	local := onet.NewLocalTest(cothority.Suite)
-	defer local.CloseAll()
-	servers := local.GenServers(1)
-	s := servers[0].Service(byzcoin.ServiceName).(*byzcoin.Service)
-
-	cl := skipchain.NewClient()
-	stack := []*skipchain.SkipBlock{}
-	cb := func(ro *onet.Roster, sib skipchain.SkipBlockID) (*skipchain.SkipBlock, error) {
-		if len(stack) > 0 {
-			// Use the blocks stored locally if possible ..
-			sb := stack[0]
-			stack = stack[1:]
-
-			// .. but only if it matches.
-			if sb.Hash.Equal(sib) {
-				return sb, nil
-			}
-		}
-
-		// Try to get more than a block at once to speed up the process.
-		blocks, err := cl.GetUpdateChainLevel(ro, sib, 1, 50)
-		if err != nil {
-			log.Info("An error occurred when getting the chain. Trying a single block.")
-			// In the worst case, it fetches only the requested block.
-			return cl.GetSingleBlock(ro, sib)
-		}
-
-		stack = blocks[1:]
-		return blocks[0], nil
-	}
-
-	log.Info("Replaying blocks")
-	_, err = s.ReplayState(bcID, r, cb)
-	if err != nil {
-		return err
-	}
-	log.Info("Successfully checked and replayed all blocks.")
-
-	return err
-}
-
 // "cDesc" stands for Change Description. This function allows one to edit the
 // description of a darc.
 func darcCdesc(c *cli.Context) error {
@@ -1687,6 +935,145 @@ func darcCdesc(c *cli.Context) error {
 	}
 
 	return lib.WaitPropagation(c, cl)
+}
+
+func debugBlock(c *cli.Context) error {
+	var roster *onet.Roster
+	var bcID *skipchain.SkipBlockID
+	var err error
+	blockID, err := getIDPointer(c.String("blockID"))
+	if err != nil {
+		return xerrors.Errorf("couldn't get blockID: %+v", err)
+	}
+	blockIndex := c.Int("blockIndex")
+	if blockIndex < 0 && blockID == nil {
+		return errors.New("need either --index or --id")
+	}
+	if bcCfg := c.String("bcCfg"); bcCfg != "" {
+		cfg, _, err := lib.LoadConfig(bcCfg)
+		if err != nil {
+			return xerrors.Errorf("couldn't get bc-config: %+v", err)
+		}
+		roster = &cfg.Roster
+		bcID = &cfg.ByzCoinID
+	}
+	bcIDNew, err := getIDPointer(c.String("bcID"))
+	if err != nil {
+		return xerrors.Errorf("couldn't get bcID: %+v", err)
+	}
+	if bcIDNew != nil {
+		bcID = bcIDNew
+	}
+	all := c.Bool("all")
+	if url := c.String("url"); url != "" {
+		if bcID == nil {
+			return errors.New("please also give either --bcID or --bcCfg")
+		}
+		roster = onet.NewRoster([]*network.ServerIdentity{{
+			Public: cothority.Suite.Point(),
+			URL:    url,
+		}})
+		if all {
+			sb, err := getBlock(*roster, bcID, blockID, blockIndex, 0)
+			if err != nil {
+				return xerrors.Errorf("couldn't get block: %+v", err)
+			}
+			roster = sb.Roster
+		}
+	}
+	if roster == nil {
+		return errors.New("give either --bcCfg or --url")
+	}
+
+	for i, node := range roster.List {
+		url := node.URL
+		if url == "" {
+			url = node.Address.String()
+		}
+		log.Info("Contacting node", url)
+		sb, err := getBlock(*roster, bcID, blockID, blockIndex, i)
+		if err != nil {
+			log.Warn("Got error while contacting node:", err)
+			continue
+		}
+		var dBody byzcoin.DataBody
+		err = protobuf.Decode(sb.Payload, &dBody)
+		if err != nil {
+			return xerrors.Errorf("couldn't decode body: %+v", err)
+		}
+		var dHead byzcoin.DataHeader
+		err = protobuf.Decode(sb.Data, &dHead)
+		if err != nil {
+			return xerrors.Errorf("couldn't decode data: %+v", err)
+		}
+		t := time.Unix(dHead.Timestamp/1e9, 0)
+		var blinks []string
+		for _, l := range sb.BackLinkIDs {
+			blinks = append(blinks, fmt.Sprintf("\t\tTo: %x", l))
+		}
+		var flinks []string
+		for _, l := range sb.ForwardLink {
+			flinks = append(flinks, fmt.Sprintf("\t\tTo: %x - NewRoster: %t",
+				l.To, l.NewRoster != nil))
+		}
+		out := fmt.Sprintf("\tBlock %x (index %d) from %s\n"+
+			"\tNode-list: %s\n"+
+			"\tBack-links:\n%s\n"+
+			"\tForward-links:\n%s\n",
+			sb.Hash, sb.Index, t.String(),
+			sb.Roster.List,
+			strings.Join(blinks, "\n"),
+			strings.Join(flinks, "\n"))
+		if c.Bool("txDetails") {
+			var txs []string
+			for _, tx := range dBody.TxResults {
+				if tx.Accepted {
+					var insts []string
+					for _, inst := range tx.ClientTransaction.Instructions {
+						insts = append(insts, inst.String())
+					}
+					txs = append(txs, strings.Join(insts, "\n"))
+				} else {
+					txs = append(txs, "\t\tRefused TX")
+				}
+			}
+			out += fmt.Sprintf("\tTransactions:\n%s\n",
+				strings.Join(txs, "\n"))
+		} else {
+			out += fmt.Sprintf("\tTransactions: %d\n",
+				len(dBody.TxResults))
+		}
+		log.Info(out)
+	}
+
+	return nil
+}
+
+func getBlock(roster onet.Roster, bcID *skipchain.SkipBlockID,
+	blockID *skipchain.SkipBlockID, blockIndex int,
+	node int) (*skipchain.SkipBlock, error) {
+	cl := skipchain.NewClient()
+	cl.UseNode(node)
+	if blockID != nil {
+		return cl.GetSingleBlock(&roster, *blockID)
+	}
+	repl, err := cl.GetSingleBlockByIndex(&roster, *bcID, blockIndex)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get block: %+v", err)
+	}
+	return repl.SkipBlock, nil
+}
+
+func getIDPointer(s string) (*skipchain.SkipBlockID, error) {
+	if s == "" {
+		return nil, nil
+	}
+	idB, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't decode %s: %+v", s, err)
+	}
+	idSC := skipchain.SkipBlockID(idB)
+	return &idSC, nil
 }
 
 func debugList(c *cli.Context) error {
@@ -1909,7 +1296,7 @@ func darcAdd(c *cli.Context) error {
 
 	var desc []byte
 	if c.String("desc") == "" {
-		desc = []byte(randString(10))
+		desc = []byte(lib.RandString(10))
 	} else {
 		if len(c.String("desc")) > 1024 {
 			return errors.New("descriptions longer than 1024 characters are not allowed")
@@ -2243,20 +1630,48 @@ func getInfo(c *cli.Context) error {
 	return nil
 }
 
-type configPrivate struct {
-	Owner darc.Signer
+func resolveiid(c *cli.Context) error {
+	bcArg := c.String("bc")
+	if bcArg == "" {
+		return errors.New("--bc flag is required")
+	}
+
+	cfg, cl, err := lib.LoadConfig(bcArg)
+	if err != nil {
+		return err
+	}
+
+	ndstr := c.String("namingDarc")
+	if ndstr == "" {
+		ndstr = cfg.AdminDarc.GetIdentityString()
+	}
+	nd, err := lib.GetDarcByString(cl, ndstr)
+	if err != nil {
+		return err
+	}
+
+	name := c.String("name")
+	if name == "" {
+		return errors.New("--name flag is required")
+	}
+
+	instID, err := cl.ResolveInstanceID(nd.GetBaseID(), name)
+	if err != nil {
+		return errors.New("failed to resolve instance id: " + err.Error())
+	}
+
+	_, err = cl.GetProofFromLatest(instID.Slice())
+	if err != nil {
+		return errors.New("failed to get proof from latest: " + err.Error())
+	}
+
+	log.Infof("Here is the resolved instance id:\n%s", instID)
+
+	return nil
 }
 
-func randString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	bigN := big.NewInt(int64(len(letters)))
-	b := make([]byte, n)
-	r := random.New()
-	for i := range b {
-		x := int(random.Int(bigN, r).Int64())
-		b[i] = letters[x]
-	}
-	return string(b)
+type configPrivate struct {
+	Owner darc.Signer
 }
 
 func init() { network.RegisterMessages(&configPrivate{}) }

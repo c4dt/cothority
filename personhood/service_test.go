@@ -88,6 +88,8 @@ func newS(t *testing.T) (s *sStruct) {
 			"invoke:" + contracts.ContractCoinID + ".mint",
 			"invoke:" + contracts.ContractCoinID + ".fetch",
 			"invoke:" + contracts.ContractCoinID + ".transfer",
+			"spawn:" + ContractSpawnerID,
+			"invoke:" + ContractSpawnerID + ".update",
 			"spawn:ropasci", "invoke:ropasci.second", "invoke:ropasci.confirm"}, s.signer.Identity())
 	require.Nil(t, err)
 	s.gMsg.BlockInterval = 500 * time.Millisecond
@@ -97,7 +99,7 @@ func newS(t *testing.T) (s *sStruct) {
 	require.Nil(t, err)
 	s.olID = resp.Skipblock.SkipChainID()
 	s.cl = byzcoin.NewClient(s.olID, *s.roster)
-	require.NoError(t, s.cl.UseNode(0))
+	s.cl.Genesis = resp.Skipblock
 	s.counter = uint64(0)
 	return
 }

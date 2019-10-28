@@ -5,8 +5,8 @@
 # Options:
 #   -b   re-builds bcadmin package
 
-DBG_TEST=1
-DBG_SRV=2
+DBG_TEST=2
+DBG_SRV=1
 DBG_BCADMIN=2
 
 NBR_SERVERS=4
@@ -21,12 +21,16 @@ export BC_WAIT=true
 . "../clicontracts/config_test.sh"
 . "../clicontracts/deferred_test.sh"
 . "../clicontracts/value_test.sh"
+. "../clicontracts/name_test.sh"
 
 main(){
     startTest
     buildConode go.dedis.ch/cothority/v3/byzcoin go.dedis.ch/cothority/v3/byzcoin/contracts
     [[ ! -x ./bcadmin ]] && exit 1
-    run testReplay
+    run testDbReplay
+    run testDbMerge
+    run testDbCatchup
+    run testDebugBlock
     run testLink
     run testLinkScenario
     run testCoin
@@ -42,30 +46,94 @@ main(){
     run testLinkPermission
     run testQR
     run testUpdateDarcDesc
+    run testResolveiid
     run testContractValue
     run testContractDeferred
     run testContractConfig
+    run testContractName
     stopTest
 }
 
-testReplay(){
+testDbReplay(){
+  rm -f config/* *.db
+  runCoBG 1 2 3
+  testOK runBA create public.toml --interval .5s
+  bc=config/bc*cfg
+  key=config/key*cfg
+  bcID=$( echo $bc | sed -e "s/.*bc-\(.*\).cfg/\1/" )
+  keyPub=$( echo $key | sed -e "s/.*:\(.*\).cfg/\1/" )
+
+  testFail runBA db replay conode.db $bcID
+  testOK runBA db catchup conode.db $bcID http://localhost:2003
+  testGrep "Replaying block at index 0" runBA db replay conode.db $bcID
+
+  testOK runBA mint $bc $key $keyPub 1000
+  testOK runBA mint $bc $key $keyPub 1000
+
+  # replay with more than 1 block
+  runBA db catchup conode.db $bcID http://localhost:2003
+  testNGrep "Replaying block at index 0" runBA db replay conode.db $bcID --cont
+  testReGrep "Replaying block at index 1"
+  testGrep "Replaying block at index 0" runBA db replay conode.db $bcID
+  testOK runBA db replay conode.db $bcID --cont
+}
+
+testDbMerge(){
   rm -f config/*
   runCoBG 1 2 3
   testOK runBA create public.toml --interval .5s
-  bcID=$( echo $bc | sed -e "s/.*bc-\(.*\).cfg/\1/" )
   bc=config/bc*cfg
   key=config/key*cfg
+  bcID=$( echo $bc | sed -e "s/.*bc-\(.*\).cfg/\1/" )
   keyPub=$( echo $key | sed -e "s/.*:\(.*\).cfg/\1/" )
-  testOK runBA debug replay http://localhost:2003
 
-  # replay with only the genesis block
-  testOK runBA debug replay http://localhost:2003 $bcID
+  db=$( ls $CONODE_SERVICE_PATH/* | head -n 1 )
+  pkill conode 2> /dev/null
 
-  for i in $( seq 10 ); do
-    testOK runBA mint $bc $key $keyPub 1000
-  done
-  # replay with more than 1 block
-  testOK runBA debug replay http://localhost:2003 $bcID
+  testOK runBA db merge conode.db $bcID $db
+  testGrep "Last block is: 0" runBA db status conode.db $bcID
+
+  runCoBG 1 2 3
+  testOK runBA mint $bc $key $keyPub 1000
+
+  pkill conode 2> /dev/null
+  testOK runBA db merge conode.db $bcID $db
+  testGrep "Last block is: 3" runBA db status conode.db $bcID
+}
+
+testDbCatchup(){
+  rm -f config/*
+  runCoBG 1 2 3
+  testOK runBA create public.toml --interval .5s
+  bc=config/bc*cfg
+  key=config/key*cfg
+  bcID=$( echo $bc | sed -e "s/.*bc-\(.*\).cfg/\1/" )
+  keyPub=$( echo $key | sed -e "s/.*:\(.*\).cfg/\1/" )
+
+  testOK runBA db catchup conode.db $bcID http://localhost:2003
+  testGrep "Last block is: 0" runBA db status conode.db $bcID
+  testOK runBA mint $bc $key $keyPub 1000
+  testOK runBA db catchup conode.db $bcID http://localhost:2003
+  testGrep "Last block is: 3" runBA db status conode.db $bcID
+}
+
+testDebugBlock(){
+  rm -f config/*
+  runCoBG 1 2 3
+  testOK runBA create public.toml --interval .5s
+  bc=config/bc*cfg
+  key=config/key*cfg
+  bcID=$( echo $bc | sed -e "s/.*bc-\(.*\).cfg/\1/" )
+  keyPub=$( echo $key | sed -e "s/.*:\(.*\).cfg/\1/" )
+
+  testOK runBA debug block --bcCfg $bc --blockIndex 0
+  testGrep "no block with index" runBA debug block --bcCfg $bc --blockIndex 1
+  runBA config --blockSize 1000000 $bc $key
+  testNGrep "no block with index" runBA debug block --bcCfg $bc --blockIndex 1
+  testNGrep "no block with index" runBA debug block \
+    --url http://localhost:2003 --bcID $bcID --blockIndex 1
+  testGrep "Command: update_config" runBA debug block --bcCfg $bc --blockIndex 1 \
+    --txDetails
 }
 
 testLink(){
@@ -145,6 +213,7 @@ testRoster(){
   bc=config/bc*cfg
   key=config/key*cfg
   testOK runBA latest $bc
+
   # Adding an already added roster should raise an error
   testFail runBA roster add $bc $key co1/public.toml
   testOK runBA roster add $bc $key co4/public.toml
@@ -356,11 +425,11 @@ testExpression(){
 }
 
 runBA(){
-  ./bcadmin -c config/ --debug $DBG_BCADMIN "$@"
+  dbgRun ./bcadmin -c config/ --debug $DBG_BCADMIN "$@"
 }
 
 runBA0(){
-  ./bcadmin -c config/ --debug 0 "$@"
+  dbgRun ./bcadmin -c config/ --debug 0 "$@"
 }
 
 testQR() {
@@ -389,6 +458,50 @@ testUpdateDarcDesc() {
   KEY=`cat ./darc_key.txt`
   testOK runBA darc cdesc --desc "New description" --darc "$ID"
   testGrep "New description" runBA darc show
+}
+
+# Rely on:
+# - bcadmin contract name spawn
+# - bcadmin contract value spawn
+# - bcadmin contract name add
+testResolveiid() {
+  # We are spawning a value instance, saving its name and see if we can retrieve
+  # it and get back the value stored within the value instance.
+  runCoBG 1 2 3
+  runGrepSed "export BC=" "" runBA create --roster public.toml --interval .5s
+  eval $SED
+  [ -z "$BC" ] && exit 1
+
+  testOK runBA0 contract name spawn 
+
+  # Add the rules
+  testOK runBA darc add -out_id ./darc_id.txt -out_key ./darc_key.txt -unrestricted
+  ID=`cat ./darc_id.txt`
+  KEY=`cat ./darc_key.txt`
+  testOK runBA darc rule -rule "spawn:value" --identity "$KEY" --darc "$ID" --sign "$KEY"
+  testOK runBA darc rule -rule "_name:value" --identity "$KEY" --darc "$ID" --sign "$KEY"
+
+  # Spawn the value instance
+  OUTRES=`runBA0 contract value spawn --value "Hello world" --darc "$ID" --sign "$KEY"`
+  VALUE_INSTANCE_ID=$( echo "$OUTRES" | grep -A 1 "instance id" | sed -n 2p )
+  matchOK "$VALUE_INSTANCE_ID" ^[0-9a-f]{64}$
+
+  # Save the name with the name contract
+  testOK runBA0 contract name invoke add -i $VALUE_INSTANCE_ID -name "myValue" --sign "$KEY"
+
+  # Let's get a wrong name, it should fail
+  testFail runBA0 resolveiid --name "do not exist"
+  # Let's get it right now
+  OUTRES=`runBA0 resolveiid --name "myValue" --namingDarc "$ID"`
+  matchOK "$OUTRES" "Here is the resolved instance id:
+$VALUE_INSTANCE_ID"
+
+  # Let's try with a wrong darc (the default one), it should fail
+  testFail runBA0 resolveiid --name "myValue"
+
+  # Let's get the content of the value contract
+  OUTRES=`runBA0 contract value get --instid "$VALUE_INSTANCE_ID"`
+  testGrep "Hello world" echo "$OUTRES"
 }
 
 main
