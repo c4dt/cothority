@@ -31,9 +31,9 @@ if (!protobuf.util.isNode) {
  * Detect a wrong import of the protobufsjs library that could lead
  * to inconsistency at runtime because of different bundles
  */
-if (protobuf.build !== "light") {
-    throw new Error("expecting to use the light module of protobufs");
-}
+// if (protobuf.build !== "light") {
+//     throw new Error("expecting to use the light module of protobufs");
+// }
 
 export const root = protobuf.Root.fromJSON(models);
 

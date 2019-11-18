@@ -204,7 +204,7 @@ export class RosterWSConnection implements IConnection {
         const list = this.nodes.newList(this.service, this.parallel);
         const pool = list.active;
 
-        Log.lvl3(`${this.connNbr}/${msgNbr}`, "sending", message.constructor.name, "with list:",
+        Log.llvl3(`${this.connNbr}/${msgNbr}`, "sending", message.constructor.name, "with list:",
             pool.map((conn) => conn.getURL()));
 
         // Get the first reply - need to take care not to return a reject too soon, else
