@@ -8,18 +8,15 @@ runs on the node.
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
-	"go.dedis.ch/cothority/v3/darc"
-	"sort"
 	"time"
 
-	"go.dedis.ch/cothority/v3/skipchain"
-	"go.dedis.ch/kyber/v3/sign/anon"
+	"go.dedis.ch/cothority/v4/skipchain"
+	"go.dedis.ch/kyber/v4/sign/anon"
 
-	"go.dedis.ch/cothority/v3/byzcoin"
-	"go.dedis.ch/onet/v3"
-	"go.dedis.ch/onet/v3/log"
+	"go.dedis.ch/cothority/v4/byzcoin"
+	"go.dedis.ch/onet/v4"
+	"go.dedis.ch/onet/v4/log"
 )
 
 // Used for tests
