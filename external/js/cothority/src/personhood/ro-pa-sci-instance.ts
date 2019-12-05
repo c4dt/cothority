@@ -2,7 +2,7 @@ import { Message, Properties } from "protobufjs/light";
 
 import { LongTermSecret } from "../calypso";
 
-import { curve } from "@dedis/kyber";
+import { curve } from "@c4dt/kyber";
 import ByzCoinRPC from "../byzcoin/byzcoin-rpc";
 import ClientTransaction, { Argument, Instruction } from "../byzcoin/client-transaction";
 import CoinInstance, { Coin } from "../byzcoin/contracts/coin-instance";

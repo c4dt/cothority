@@ -1,4 +1,4 @@
-import { Point, PointFactory, Scalar } from "@dedis/kyber";
+import { Point, PointFactory, Scalar } from "@c4dt/kyber";
 import { Message, Properties } from "protobufjs/light";
 import { Argument, ClientTransaction, InstanceID, Instruction, Proof } from "../byzcoin";
 import ByzCoinRPC from "../byzcoin/byzcoin-rpc";
@@ -41,7 +41,7 @@ export class OnChainSecretRPC {
         await ctx.updateCountersAndSign(this.bc, [signers]);
         await this.bc.sendTransactionAndWait(ctx);
         // Ask for the full proof which is easier to verify.
-        const p = await this.bc.getProof(ctx.instructions[0].deriveId());
+        const p = await this.bc.getProof(ctx.instructions[0].deriveId(), 1);
 
         return new WebSocketConnection(r.list[0].getWebSocketAddress(), OnChainSecretRPC.serviceID)
             .send(new CreateLTS({proof: p}), CreateLTSReply);

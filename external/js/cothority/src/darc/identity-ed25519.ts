@@ -1,4 +1,4 @@
-import { curve, Point, PointFactory, sign } from "@dedis/kyber";
+import { curve, Point, PointFactory, sign } from "@c4dt/kyber";
 import { Message, Properties } from "protobufjs/light";
 import { registerMessage } from "../protobuf";
 import { IIdentity } from "./identity-wrapper";
