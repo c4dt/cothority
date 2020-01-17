@@ -1,3 +1,4 @@
+import Log from "../log";
 import { IConnection, LeaderConnection, RosterWSConnection, WebSocketConnection } from "../network/connection";
 import { Roster } from "../network/proto";
 import {
@@ -137,16 +138,29 @@ export default class SkipchainRPC {
      * @param verify    Verify the integrity of the chain when true
      * @returns a promise that resolves with the list of blocks
      */
-    async getUpdateChain(latestID: Buffer, verify = true): Promise<SkipBlock[]> {
+    async getUpdateChain(latestID: Buffer, verify = true, first: string = ""): Promise<SkipBlock[]> {
         const req = new GetUpdateChain({latestID});
         const ret = await this.conn.send<GetUpdateChainReply>(req, GetUpdateChainReply);
         const blocks = ret.update;
 
         const last = blocks[blocks.length - 1];
         if (last && last.forwardLinks.length > 0) {
-            // more blocks exist but typically the roster has changed
-            const rpc = new SkipchainRPC(last.roster);
-            const more = await rpc.getUpdateChain(last.hash, verify);
+            // more blocks exist but are not available in that node. This could be that the
+            // roster changed, but first of all it might be because of dedis/cothority#2181, so
+            // check that first, before trying with the latest roster.
+            if (first === "") {
+                first = this.conn.getURL();
+            }
+            this.conn.invalidate(this.conn.getURL());
+            let more: SkipBlock[];
+            if (this.conn.getURL() !== first) {
+                // The roster list hasn't been cycled around yet
+                more = await this.getUpdateChain(last.hash, verify, first);
+            } else {
+                // As a last resort, start again with the full roster
+                const rpc = new SkipchainRPC(last.roster);
+                more = await rpc.getUpdateChain(last.hash, verify);
+            }
 
             blocks.splice(-1, 1, ...more);
         }
