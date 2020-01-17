@@ -53,6 +53,12 @@ export interface IConnection {
      * @param service
      */
     copy(service: string): IConnection;
+
+    /**
+     * Invalidates the given address. Useful for restricted classes like
+     * RosterWSConnection.
+     */
+    invalidate(address: string): void;
 }
 
 /**
@@ -159,6 +165,9 @@ export class WebSocketConnection implements IConnection {
 
     copy(service: string): IConnection {
         return new WebSocketConnection(this.url, service);
+    }
+
+    invalidate(address: string): void {
     }
 }
 
@@ -281,6 +290,10 @@ export class RosterWSConnection implements IConnection {
 
     copy(service: string): IConnection {
         return new RosterWSConnection(this.rID, service, this.parallel);
+    }
+
+    invalidate(address: string): void {
+        this.nodes.gotError(address);
     }
 }
 

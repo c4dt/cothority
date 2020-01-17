@@ -1,4 +1,4 @@
-import { Point, PointFactory } from "@dedis/kyber";
+import { Point, PointFactory } from "@c4dt/kyber";
 import { createHash } from "crypto-browserify";
 import { Message, Properties } from "protobufjs/light";
 import UUID from "pure-uuid";

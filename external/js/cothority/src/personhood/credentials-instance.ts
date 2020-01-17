@@ -1,4 +1,4 @@
-import { Point } from "@dedis/kyber";
+import { Point } from "@c4dt/kyber";
 import { createHash, randomBytes } from "crypto-browserify";
 import { Message, Properties } from "protobufjs/light";
 import ByzCoinRPC from "../byzcoin/byzcoin-rpc";

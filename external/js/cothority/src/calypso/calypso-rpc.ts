@@ -1,4 +1,4 @@
-import { Point, PointFactory, Scalar } from "@dedis/kyber";
+import { Point, PointFactory, Scalar } from "@c4dt/kyber";
 import { Message, Properties } from "protobufjs/light";
 import { Argument, ClientTransaction, InstanceID, Instruction, Proof } from "../byzcoin";
 import ByzCoinRPC from "../byzcoin/byzcoin-rpc";

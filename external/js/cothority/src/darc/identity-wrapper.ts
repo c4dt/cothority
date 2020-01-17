@@ -1,4 +1,4 @@
-import Ed25519Point from "@dedis/kyber/curve/edwards25519/point";
+import Ed25519Point from "@c4dt/kyber/curve/edwards25519/point";
 import { Message } from "protobufjs/light";
 import { registerMessage } from "../protobuf";
 import IdentityDarc from "./identity-darc";
