@@ -2,6 +2,7 @@ package contracts
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"regexp"
@@ -140,9 +141,29 @@ func (c *ContractSpawner) Spawn(rst byzcoin.ReadOnlyStateTrie, inst byzcoin.Inst
 		coin := &byzcoin.Coin{
 			Name: byzcoin.NewInstanceID(inst.Spawn.Args.Search("coinName")),
 		}
+
+		// Put addCoin to -1, which is the maximum.
+		// Then the for-loop below will get as much as possible from cout.
+		addCoin := uint64(-1)
+		for _, arg := range inst.Spawn.Args{
+			if arg.Name == "coinValue"{
+				if len(arg.Value) < 8{
+					return nil, nil,
+					errors.New("getCoin needs to have a value of 8 bytes")
+				}
+				addCoin = binary.LittleEndian.Uint64(arg.Value)
+			}
+		}
+
 		for i := range cout {
-			if cout[i].Name.Equal(coin.Name) {
-				err = coin.SafeAdd(cout[i].Value)
+			if cout[i].Name.Equal(coin.Name) && addCoin > 0 {
+				if addCoin < cout[i].Value{
+					err = coin.SafeAdd(addCoin)
+					addCoin = 0
+				} else {
+					err = coin.SafeAdd(cout[i].Value)
+					addCoin -= cout[i].Value
+				}
 				if err != nil {
 					return nil, nil, err
 				}
