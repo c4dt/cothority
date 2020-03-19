@@ -283,7 +283,10 @@ export class CredentialStruct extends Message<CredentialStruct> {
      * @param attribute     Name of the attribute
      * @param value         The value to set
      */
-    setAttribute(credential: string, attribute: string, value?: Buffer) {
+    setAttribute(credential: string, attribute: string, value?: Buffer | string) {
+        if (!(value instanceof Buffer)) {
+            value = Buffer.from(value);
+        }
         const attr = new Attribute({name: attribute, value});
         const cred = this.credentials.find((c) => c.name === credential);
         if (cred === undefined) {
