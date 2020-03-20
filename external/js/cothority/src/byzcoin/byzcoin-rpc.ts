@@ -1,18 +1,12 @@
 import Long from "long";
-import { BehaviorSubject } from "rxjs";
+import {BehaviorSubject, of} from "rxjs";
 import { tap } from "rxjs/internal/operators/tap";
-import { distinctUntilChanged, filter, map, mergeMap } from "rxjs/operators";
+import {catchError, distinctUntilChanged, filter, map, mergeMap} from "rxjs/operators";
 import { Rule } from "../darc";
 import Darc from "../darc/darc";
 import IdentityEd25519 from "../darc/identity-ed25519";
 import IdentityWrapper, { IIdentity } from "../darc/identity-wrapper";
-import { WebSocketAdapter } from "../network";
-import {
-    IConnection,
-    LeaderConnection,
-    RosterWSConnection,
-} from "../network/connection";
-import { Roster } from "../network/proto";
+import {IConnection, LeaderConnection, Roster, RosterWSConnection, WebSocketAdapter} from "../network";
 import { SkipBlock } from "../skipchain/skipblock";
 import SkipchainRPC from "../skipchain/skipchain-rpc";
 import ClientTransaction, { ICounterUpdater } from "./client-transaction";
@@ -33,6 +27,7 @@ import {
     GetSignerCountersResponse,
 } from "./proto/requests";
 import { StreamingRequest, StreamingResponse } from "./proto/stream";
+import Log from "../log";
 
 export const currentVersion = 2;
 
@@ -237,6 +232,11 @@ export default class ByzCoinRPC implements ICounterUpdater {
                 filter((block) => block.index > dbProof.latest.index),
                 // Get a new proof of the instance
                 mergeMap(() => this.getProofFromLatest(id)),
+                // Handle errors by sending latest know proof
+                catchError((err) => {
+                    Log.error("instanceBS: couldn't get new instance:", err);
+                    return of(dbProof);
+                }),
                 // Don't emit proofs that are already known
                 distinctUntilChanged((a, b) =>
                     a.stateChangeBody.version.equals(b.stateChangeBody.version)),
