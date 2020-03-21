@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -602,6 +603,37 @@ func (s *Service) GetSignerCounters(req *GetSignerCounters) (*GetSignerCountersR
 		Index:    uint64(st.GetIndex()),
 	}
 	return &resp, nil
+}
+
+func (s *Service) ProofsRequest(pr *ProofsRequest) (*ProofsReply, error) {
+	reply := &ProofsReply{}
+	if pr.Flags > 0 {
+		return nil, errors.New("cannot merge proofs yet")
+	}
+	sb := s.db().GetByID(pr.LatestBlockID)
+	if sb == nil {
+		return nil, xerrors.New("cannot find skipblock while getting proof")
+	}
+	if len(sb.ForwardLink) > 0 {
+		return nil, xerrors.New("can only give proofs for latest block")
+	}
+	st, err := s.GetReadOnlyStateTrie(sb.SkipChainID())
+	if err != nil {
+		return nil, xerrors.Errorf("getting state trie: %w", err)
+	}
+	for _, idv := range pr.Instances {
+		_, ver, _, _, err := st.GetValues(idv.ID[:])
+		if ver == idv.Version {
+			continue
+		}
+		proof, err := st.GetProof(idv.ID[:])
+		if err != nil {
+			log.Warn("Error while looking up proof", err)
+			continue
+		}
+		reply.Proofs = append(reply.Proofs, *proof)
+	}
+	return reply, nil
 }
 
 // DownloadState creates a snapshot of the current state and then returns the
@@ -2942,6 +2974,7 @@ func newService(c *onet.Context) (onet.Service, error) {
 		s.CreateGenesisBlock,
 		s.AddTransaction,
 		s.GetProof,
+		s.ProofsRequest,
 		s.CheckAuthorization,
 		s.GetSignerCounters,
 		s.DownloadState,

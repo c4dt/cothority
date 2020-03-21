@@ -505,3 +505,35 @@ type DebugRemoveRequest struct {
 	ByzCoinID []byte
 	Signature []byte
 }
+
+// IDVersion holds the InstanceID and the latest known version of an instance.
+type IDVersion struct {
+	ID      InstanceID
+	Version uint64
+}
+
+// ProofsRequestFlags define how the proofs will be returned
+type ProofsRequestFlags uint64
+
+const (
+	// Currently not available
+	PRFMergeProofs = ProofsRequestFlags(1 << iota)
+	PRFSendBlock
+	PRFSendLinks
+)
+
+// ProofsRequest allows to request changes to existing instances by sending a
+// slice of known versions.
+type ProofsRequest struct {
+	Instances     []IDVersion
+	Flags         ProofsRequestFlags
+	LatestBlockID skipchain.SkipBlockID
+}
+
+// ProofsReply only sends back the instances that have a new version,
+// but will not send any proof for an instance that didn't change.
+type ProofsReply struct {
+	Proofs []trie.Proof
+	Links []skipchain.ForwardLink
+	Latest *skipchain.SkipBlock
+}

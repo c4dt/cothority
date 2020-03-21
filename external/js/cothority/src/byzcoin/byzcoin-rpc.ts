@@ -1,21 +1,21 @@
 import Long from "long";
 import {BehaviorSubject, of} from "rxjs";
-import { tap } from "rxjs/internal/operators/tap";
+import {tap} from "rxjs/internal/operators/tap";
 import {catchError, distinctUntilChanged, filter, map, mergeMap} from "rxjs/operators";
-import { Rule } from "../darc";
+import {Rule} from "../darc";
 import Darc from "../darc/darc";
 import IdentityEd25519 from "../darc/identity-ed25519";
-import IdentityWrapper, { IIdentity } from "../darc/identity-wrapper";
+import IdentityWrapper, {IIdentity} from "../darc/identity-wrapper";
 import {IConnection, LeaderConnection, Roster, RosterWSConnection, WebSocketAdapter} from "../network";
-import { SkipBlock } from "../skipchain/skipblock";
+import {SkipBlock} from "../skipchain/skipblock";
 import SkipchainRPC from "../skipchain/skipchain-rpc";
-import ClientTransaction, { ICounterUpdater } from "./client-transaction";
+import ClientTransaction, {ICounterUpdater} from "./client-transaction";
 import ChainConfig from "./config";
 import DarcInstance from "./contracts/darc-instance";
-import { InstanceID } from "./instance";
+import {InstanceID} from "./instance";
 import Proof from "./proof";
-import { DataHeader } from "./proto";
-import CheckAuthorization, { CheckAuthorizationResponse } from "./proto/check-auth";
+import {DataHeader} from "./proto";
+import CheckAuthorization, {CheckAuthorizationResponse} from "./proto/check-auth";
 import {
     AddTxRequest,
     AddTxResponse,
@@ -26,7 +26,7 @@ import {
     GetSignerCounters,
     GetSignerCountersResponse,
 } from "./proto/requests";
-import { StreamingRequest, StreamingResponse } from "./proto/stream";
+import {StreamingRequest, StreamingResponse} from "./proto/stream";
 import Log from "../log";
 
 export const currentVersion = 2;
@@ -43,15 +43,29 @@ export const CONFIG_INSTANCE_ID = Buffer.alloc(32, 0);
  */
 export default class ByzCoinRPC implements ICounterUpdater {
 
+    static readonly serviceName = "ByzCoin";
+    private static staticCounters = new Map<string, Map<string, Long>>();
+    private newBlockWS: WebSocketAdapter;
+    private genesisDarc: Darc;
+    private newBlock: BehaviorSubject<SkipBlock>;
+    private config: ChainConfig;
+    private genesis: SkipBlock;
+    private conn: IConnection;
+    private db: IStorage;
+    private cache = new Map<InstanceID, BehaviorSubject<Proof>>();
+
+    protected constructor() {
+    }
+
     get genesisID(): InstanceID {
         return this.genesis.computeHash();
     }
 
+    private _latest: SkipBlock;
+
     get latest(): SkipBlock {
         return new SkipBlock(this._latest);
     }
-
-    static readonly serviceName = "ByzCoin";
 
     /**
      * Helper to create a genesis darc
@@ -134,20 +148,6 @@ export default class ByzCoinRPC implements ICounterUpdater {
         return ByzCoinRPC.fromByzcoin(roster, ret.skipblock.hash,
             undefined, undefined, undefined, storage);
     }
-    private static staticCounters = new Map<string, Map<string, Long>>();
-    private newBlockWS: WebSocketAdapter;
-    private genesisDarc: Darc;
-    private newBlock: BehaviorSubject<SkipBlock>;
-    private config: ChainConfig;
-    private genesis: SkipBlock;
-    private conn: IConnection;
-    private db: IStorage;
-    private cache = new Map<InstanceID, BehaviorSubject<Proof>>();
-
-    private _latest: SkipBlock;
-
-    protected constructor() {
-    }
 
     /**
      * Getter for the genesis darc
@@ -210,6 +210,7 @@ export default class ByzCoinRPC implements ICounterUpdater {
         let dbProof: Proof;
         if (proofBuf === undefined) {
             dbProof = await this.getProofFromLatest(id);
+            await this.db.set(idStr, Buffer.from(Proof.encode(dbProof).finish()));
         } else {
             dbProof = Proof.decode(proofBuf);
         }
@@ -221,6 +222,7 @@ export default class ByzCoinRPC implements ICounterUpdater {
         // current, but a best guess from the db of a previous session.
         const bsNew = new BehaviorSubject(dbProof);
         this.cache.set(id, bsNew);
+        Log.print(this.cache.size);
 
         // Set up a pipe from the block to fetch new versions if a new block
         // arrives.
@@ -234,15 +236,16 @@ export default class ByzCoinRPC implements ICounterUpdater {
                 mergeMap(() => this.getProofFromLatest(id)),
                 // Handle errors by sending latest know proof
                 catchError((err) => {
-                    Log.error("instanceBS: couldn't get new instance:", err);
+                    // Log.error("instanceBS: couldn't get new instance:", err);
                     return of(dbProof);
                 }),
                 // Don't emit proofs that are already known
                 distinctUntilChanged((a, b) =>
                     a.stateChangeBody.version.equals(b.stateChangeBody.version)),
                 // Store new proofs in the db for later use
-                tap((proof) =>
-                    this.db.set(idStr, Buffer.from(Proof.encode(proof).finish()))),
+                tap((proof) => {
+                    this.db.set(idStr, Buffer.from(Proof.encode(proof).finish()));
+                }),
                 // Link to the BehaviorSubject
             ).subscribe(bsNew);
 
@@ -486,10 +489,12 @@ export default class ByzCoinRPC implements ICounterUpdater {
             id: this.genesisID,
         });
         this.conn.sendStream<StreamingResponse>(msgBlock,
-            StreamingResponse).pipe(map(([sr, ws]) => {
-            this.newBlockWS = ws;
-            return sr.block;
-        })).subscribe(this.newBlock);
+            StreamingResponse).pipe(
+            map(([sr, ws]) => {
+                this.newBlockWS = ws;
+                return sr.block;
+            })
+        ).subscribe(this.newBlock);
         return this.newBlock;
     }
 
