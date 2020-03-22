@@ -717,3 +717,14 @@ func (c ChainConfig) String() string {
 	}
 	return res.String()
 }
+
+// ProofsRequestFlags define how the proofs will be returned
+type ProofsRequestFlags uint64
+
+const (
+	// Currently not available
+	PRFMergeProofs = ProofsRequestFlags(1 << iota)
+	PRFSendBlock
+	PRFSendLinks
+)
+

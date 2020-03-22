@@ -19,6 +19,7 @@ import (
 // type :TxResults:[]TxResult
 // type :InstanceID:bytes
 // type :Version:sint32
+// type :ProofsRequestFlags:uint64
 // import "skipchain.proto";
 // import "onet.proto";
 // import "darc.proto";
@@ -511,16 +512,6 @@ type IDVersion struct {
 	ID      InstanceID
 	Version uint64
 }
-
-// ProofsRequestFlags define how the proofs will be returned
-type ProofsRequestFlags uint64
-
-const (
-	// Currently not available
-	PRFMergeProofs = ProofsRequestFlags(1 << iota)
-	PRFSendBlock
-	PRFSendLinks
-)
 
 // ProofsRequest allows to request changes to existing instances by sending a
 // slice of known versions.

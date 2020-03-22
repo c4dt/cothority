@@ -490,21 +490,11 @@ message IDVersion {
   required uint64 version = 2;
 }
 
-// ProofsRequestFlags define how the proofs will be returned
-type ProofsRequestFlags uint64
-
-const (
-	// Currently not available
-	PRFMergeProofs = ProofsRequestFlags(1 << iota)
-	PRFSendBlock
-	PRFSendLinks
-)
-
 // ProofsRequest allows to request changes to existing instances by sending a
 // slice of known versions.
 message ProofsRequest {
   repeated IDVersion instances = 1;
-  required ProofsRequestFlags flags = 2;
+  required uint64 flags = 2;
   required bytes latestblockid = 3;
 }
 
