@@ -13,7 +13,7 @@ import ClientTransaction, {ICounterUpdater} from "./client-transaction";
 import ChainConfig from "./config";
 import DarcInstance from "./contracts/darc-instance";
 import {InstanceID} from "./instance";
-import Proof from "./proof";
+import Proof, {InclusionProof} from "./proof";
 import {DataHeader} from "./proto";
 import CheckAuthorization, {CheckAuthorizationResponse} from "./proto/check-auth";
 import {
@@ -24,7 +24,7 @@ import {
     GetProof,
     GetProofResponse,
     GetSignerCounters,
-    GetSignerCountersResponse,
+    GetSignerCountersResponse, IDVersion, ProofsReply, ProofsRequest,
 } from "./proto/requests";
 import {StreamingRequest, StreamingResponse} from "./proto/stream";
 import Log from "../log";
@@ -390,6 +390,29 @@ export default class ByzCoinRPC implements ICounterUpdater {
         this._latest = reply.proof.latest;
 
         return reply.proof;
+    }
+
+    /**
+     * Gets one or more proofs for updated instances. The client can ask an array of instances and their latest
+     * known version, and the service will return all instances that have been updated in the meantim.
+     *
+     * Instead of returning full proofs, it only returns the InclusionProofs.
+     * 
+     * @param instances
+     * @param flags
+     */
+    async getProofs(instances: IDVersion[], flags: Long): Promise<InclusionProof[]>{
+        const req = new ProofsRequest({
+            instances,
+            flags,
+            latestblockid: this.latest.hash,
+        });
+
+        const header = DataHeader.decode(this.latest.data);
+        const reply = await this.conn.send<ProofsReply>(req, ProofsReply);
+        return reply.proofs.filter(pr => pr.hashInterior(0).equals(header.trieRoot))
+            .filter(pr => instances.find(inst => inst.id == pr.key))
+            .filter(pr => pr.exists(pr.key));
     }
 
     /**

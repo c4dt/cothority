@@ -726,5 +726,6 @@ const (
 	PRFMergeProofs = ProofsRequestFlags(1 << iota)
 	PRFSendBlock
 	PRFSendLinks
+	PRFSendVersion0
 )
 

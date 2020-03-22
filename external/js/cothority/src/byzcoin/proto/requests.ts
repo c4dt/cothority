@@ -3,9 +3,9 @@ import { Message, Properties } from "protobufjs/light";
 import Darc from "../../darc/darc";
 import { Roster } from "../../network/proto";
 import { registerMessage } from "../../protobuf";
-import { SkipBlock } from "../../skipchain/skipblock";
+import {ForwardLink, SkipBlock} from "../../skipchain/skipblock";
 import ClientTransaction from "../client-transaction";
-import Proof from "../proof";
+import Proof, {InclusionProof} from "../proof";
 
 /**
  * Request to create a byzcoin skipchain
@@ -221,6 +221,58 @@ export class GetSignerCountersResponse extends Message<GetSignerCountersResponse
         super(props);
 
         this.counters = this.counters || [];
+    }
+}
+
+/**
+ * Holds an instanceID and it's latest known version.
+ */
+export class IDVersion extends Message<IDVersion>{
+    static register(){
+        registerMessage("IDversion", IDVersion)
+    }
+
+    readonly id: Buffer;
+    readonly version: Long;
+}
+
+/**
+ * Requests a set of proofs that will be returned in a single message.
+ * The reply will only hold proofs for instances that have a higher version than the ones given here.
+ */
+export class ProofsRequest extends Message<ProofsRequest>{
+    static readonly MergeProofs = Long.fromNumber(1);
+    static readonly SendBlock = Long.fromNumber(2);
+    static readonly SendLinks = Long.fromNumber(4);
+    static readonly SendVersion0 = Long.fromNumber(8);
+
+    static register(){
+        registerMessage("ProofsRequest", ProofsRequest);
+    }
+
+    readonly instances: IDVersion[];
+    readonly flags: Long;
+    readonly latestblockid: Buffer;
+
+    constructor(props?: Properties<ProofsRequest>){
+        super(props);
+    }
+}
+
+/**
+ * The requested proofs
+ */
+export class ProofsReply extends Message<ProofsReply>{
+    static register(){
+        registerMessage("ProofsReply", ProofsReply);
+    }
+
+    readonly proofs: InclusionProof[];
+    readonly links: ForwardLink[];
+    readonly latest: SkipBlock;
+
+    constructor(props?: Properties<ProofsReply>){
+        super(props);
     }
 }
 
