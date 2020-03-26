@@ -3,7 +3,7 @@
 EXCLUDE_LINT := should be.*UI
 
 Coding/bin/Makefile.base:
-	git clone https://github.com/dedis/Coding
+	git clone -b update-goveralls https://github.com/c4dt/Coding
 include Coding/bin/Makefile.base
 
 # You can use `test_playground` to run any test or part of cothority
