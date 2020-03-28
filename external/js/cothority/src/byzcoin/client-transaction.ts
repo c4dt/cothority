@@ -140,6 +140,10 @@ export class Instruction extends Message<Instruction> {
         }
         throw new Error("instruction without type");
     }
+    static readonly typeSpawn = 0;
+    static readonly typeInvoke = 1;
+    static readonly typeDelete = 2;
+
     /**
      * @see README#Message classes
      */
