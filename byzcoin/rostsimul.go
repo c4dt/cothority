@@ -71,6 +71,16 @@ func (s *ROSTSimul) ForEach(func(k, v []byte) error) error {
 	return errors.New("not implemented")
 }
 
+// LoadConfigFromTrie is not implemented
+func (s *ROSTSimul) LoadConfigFromTrie() (*ChainConfig, error) {
+	return nil, errors.New("not implemented")
+}
+
+// LoadDarcFromTrie is not implemented
+func (s *ROSTSimul) LoadDarcFromTrie(id darc.ID) (*darc.Darc, error) {
+	return nil, errors.New("not implemented")
+}
+
 // StoreAllToReplica stores all stateChanges, without checking for validity!
 func (s *ROSTSimul) StoreAllToReplica(scs StateChanges) (ReadOnlyStateTrie, error) {
 	for _, sc := range scs {
