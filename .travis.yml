@@ -42,7 +42,9 @@ jobs:
     - <<: *language_go_1_13
       script:
         - make -C conode verify
-        - GO111MODULE=on make test_{fmt,lint}
+        - GO111MODULE=on make test_{fmt,lint} || true
+        - git status
+        - git status --porcelain
     - <<: *language_go_1_14
       script:
         - make -C conode verify
