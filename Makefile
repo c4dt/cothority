@@ -41,3 +41,10 @@ test_proto:
 		echo "Please update proto-files with 'make proto'"; \
 		exit 1; \
 	fi
+
+test_lint: staticcheck
+.PHONY: staticcheck
+$(GOPATH)/bin/staticcheck:
+	GO111MODULE=off go get honnef.co/go/tools/cmd/staticcheck
+staticcheck: $(GOPATH)/bin/staticcheck
+	$< ./...
